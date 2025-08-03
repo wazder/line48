@@ -99,8 +99,8 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
     for point in config.LINE_POINTS:
         lines.append(sv.Point(point.x, frame_height))
     
-    # Initialize ByteTracker for proper tracking
-    byte_tracker = sv.ByteTracker()
+    # Initialize ByteTrack for proper tracking
+    byte_tracker = sv.ByteTrack()
     
     # Initialize segment tracker with RELAXED parameters
     segment_tracker = SAMSegmentTracker(
@@ -176,7 +176,7 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
                         class_id=np.array(class_ids)
                     )
                     
-                    # Track with ByteTracker
+                    # Track with ByteTrack
                     tracked_detections = byte_tracker.update_with_detections(sam_detections)
                     
                     # Convert back to our format with track IDs
