@@ -98,13 +98,13 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
     for point in config.LINE_POINTS:
         lines.append(sv.Point(point.x, frame_height))
     
-    # Initialize segment tracker with BALANCED parameters
+    # Initialize segment tracker with RELAXED parameters
     segment_tracker = SAMSegmentTracker(
         lines=lines,
         fps=fps,
-        min_safe_time=1.0,      # BALANCED: 1 second (YOLO: 0.5s)
-        min_uncertain_time=0.6,  # BALANCED: 0.6 seconds
-        min_very_brief_time=0.3  # BALANCED: 0.3 seconds
+        min_safe_time=0.5,      # RELAXED: Match YOLO's 0.5s
+        min_uncertain_time=0.28, # RELAXED: Match YOLO's 0.28s  
+        min_very_brief_time=0.17 # RELAXED: Match YOLO's 0.17s
     )
     
     # Setup video writer
@@ -144,13 +144,13 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
             # SAM detection and segmentation with HIGHER confidence
             segmented_frame, detections = sam_logic.detect_and_segment(frame)
             
-            # Additional filtering for SAM results - BALANCED parameters
+            # Additional filtering for SAM results - RELAXED parameters
             filtered_detections = []
             for detection in detections:
-                # BALANCED filtering: moderate confidence and smaller mask threshold
-                if (detection.get('confidence', 0) > 0.35 and  # Lowered from 0.5 to 0.35
+                # RELAXED filtering: lower confidence and smaller mask threshold
+                if (detection.get('confidence', 0) > 0.25 and  # Match YOLO's 0.25
                     detection.get('mask') is not None and
-                    np.sum(detection['mask']) > 800):  # Lowered from 2000 to 800 pixels
+                    np.sum(detection['mask']) > 400):  # Further reduced from 800 to 400 pixels
                     filtered_detections.append(detection)
             
             # Update segment tracker with filtered detections
