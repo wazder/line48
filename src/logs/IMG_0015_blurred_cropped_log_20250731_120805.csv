@@ -1,0 +1,13 @@
+Object ID,Class,Line Number,Direction,Frame,Timestamp (min:sec)
+42,person,1,OUT,696,0:00:12
+81,person,1,IN,914,0:00:16
+1246,person,1,OUT,8880,0:02:44
+1315,person,1,IN,9231,0:02:50
+1428,suitcase,1,OUT,10146,0:03:07
+1744,person,1,OUT,13159,0:04:03
+1839,suitcase,1,OUT,14079,0:04:20
+1819,person,1,IN,14121,0:04:21
+1870,person,1,OUT,14162,0:04:22
+1899,person,1,IN,14298,0:04:24
+1959,person,1,IN,14886,0:04:35
+2270,person,1,OUT,16595,0:05:07
