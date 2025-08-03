@@ -15,13 +15,16 @@ LOG_CSV_PATH = ""
 LINE_HEIGHT = 1080
 LINE_POINTS = [
     sv.Point(880, 0),   # Line 1
-    sv.Point(960, 0),   # Line 2
-    sv.Point(1040, 0),  # Line 3
-    sv.Point(1120, 0)   # Line 4
+    sv.Point(920, 0),   # Line 2 (yeni)
+    sv.Point(960, 0),   # Line 3
+    sv.Point(1000, 0),  # Line 4 (yeni)
+    sv.Point(1040, 0),  # Line 5
+    sv.Point(1080, 0),  # Line 6 (yeni)
+    sv.Point(1120, 0)   # Line 7
 ]
 
 # Line IDs for identification
-LINE_IDS = [1, 2, 3, 4]
+LINE_IDS = [1, 2, 3, 4, 5, 6, 7]
 
 # COCO class names for detection
 COCO_NAMES = ["person", "backpack", "handbag", "suitcase"]

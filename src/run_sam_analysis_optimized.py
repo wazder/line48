@@ -156,9 +156,9 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
                 class_ids = []
                 
                 for detection in detections:
-                    if (detection.get('confidence', 0) > 0.25 and  # Match YOLO's 0.25
+                    if (detection.get('confidence', 0) > 0.15 and  # Very low confidence
                         detection.get('mask') is not None and
-                        np.sum(detection['mask']) > 400):  # Filter small masks
+                        np.sum(detection['mask']) > 300):  # Even smaller masks
                         
                         bbox = detection['bbox']
                         xyxy.append([bbox[0], bbox[1], bbox[2], bbox[3]])
@@ -182,9 +182,9 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
                     # Convert back to our format with track IDs
                     filtered_detections = []
                     for i, detection in enumerate(detections):
-                        if (detection.get('confidence', 0) > 0.25 and
+                        if (detection.get('confidence', 0) > 0.15 and
                             detection.get('mask') is not None and
-                            np.sum(detection['mask']) > 400):
+                            np.sum(detection['mask']) > 300):
                             
                             # Add track ID if available
                             if i < len(tracked_detections.tracker_id):

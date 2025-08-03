@@ -86,8 +86,10 @@ class SAMSegmentTracker:
             if 'mask' not in detection or detection['mask'] is None:
                 continue
                 
-            # Generate track ID (simplified - in practice use proper tracking)
-            track_id = self._generate_track_id(detection, frame_idx)
+            # Use provided track ID from ByteTrack
+            track_id = detection.get('track_id', -1)
+            if track_id == -1:
+                continue  # Skip untracked detections
             
             # Get segment centroid
             centroid_x, centroid_y = self._get_mask_centroid(detection['mask'])
