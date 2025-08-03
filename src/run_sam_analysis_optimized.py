@@ -98,13 +98,13 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
     for point in config.LINE_POINTS:
         lines.append(sv.Point(point.x, frame_height))
     
-    # Initialize segment tracker with VERY STRICT parameters
+    # Initialize segment tracker with BALANCED parameters
     segment_tracker = SAMSegmentTracker(
         lines=lines,
         fps=fps,
-        min_safe_time=3.0,      # VERY strict: 3 seconds minimum
-        min_uncertain_time=1.5,  # VERY strict: 1.5 seconds
-        min_very_brief_time=0.8  # VERY strict: 0.8 seconds
+        min_safe_time=1.0,      # BALANCED: 1 second (YOLO: 0.5s)
+        min_uncertain_time=0.6,  # BALANCED: 0.6 seconds
+        min_very_brief_time=0.3  # BALANCED: 0.3 seconds
     )
     
     # Setup video writer
@@ -130,9 +130,9 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
     start_time = time.time()
     detection_log = []
     
-    print(f"\\n🔥 Starting OPTIMIZED SAM processing...")
+    print(f"\\n🔥 Starting BALANCED SAM processing...")
     print(f"   SAM Model: {sam_model}")
-    print(f"   STRICT Parameters: min_safe=3.0s, confidence=0.5, mask_area>1000px")
+    print(f"   BALANCED Parameters: min_safe=1.0s, confidence=0.35, mask_area>800px")
     print("=" * 60)
     
     try:
@@ -144,13 +144,13 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
             # SAM detection and segmentation with HIGHER confidence
             segmented_frame, detections = sam_logic.detect_and_segment(frame)
             
-            # Additional filtering for SAM results
+            # Additional filtering for SAM results - BALANCED parameters
             filtered_detections = []
             for detection in detections:
-                # Only keep high-confidence detections with reasonable mask sizes
-                if (detection.get('confidence', 0) > 0.5 and 
+                # BALANCED filtering: moderate confidence and smaller mask threshold
+                if (detection.get('confidence', 0) > 0.35 and  # Lowered from 0.5 to 0.35
                     detection.get('mask') is not None and
-                    np.sum(detection['mask']) > 2000):  # Larger minimum mask area
+                    np.sum(detection['mask']) > 800):  # Lowered from 2000 to 800 pixels
                     filtered_detections.append(detection)
             
             # Update segment tracker with filtered detections
