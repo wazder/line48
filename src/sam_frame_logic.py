@@ -1,6 +1,5 @@
 """
-SAM Frame Logic - Segment tracking and line crossing detection with frame-based validation
-Extends the original frame_logic.py to work with SAM segmentation masks.
+SAM Frame Logic - Segment tracking and line crossing detection
 """
 
 import numpy as np
@@ -8,30 +7,17 @@ import cv2
 from typing import Dict, List, Tuple, Optional
 import supervision as sv
 from collections import defaultdict, deque
-import time
 
 class SAMSegmentTracker:
-    """
-    Tracks SAM segmentation masks across frames and detects line crossings.
-    Uses frame-based validation to filter out brief, unreliable detections.
-    """
+    """Tracks SAM segmentation masks across frames and detects line crossings."""
     
     def __init__(self, 
                  lines: List[sv.Point],
                  fps: float = 30.0,
-                 min_safe_time: float = 2.0,    # Much stricter for SAM
-                 min_uncertain_time: float = 1.0,  # Much stricter for SAM
-                 min_very_brief_time: float = 0.5): # Much stricter for SAM
-        """
-        Initialize SAM segment tracker.
-        
-        Args:
-            lines: List of line points for crossing detection
-            fps: Video FPS for time calculations
-            min_safe_time: Minimum time for safe predictions (seconds)
-            min_uncertain_time: Minimum time for uncertain predictions (seconds)
-            min_very_brief_time: Minimum time for very brief predictions (seconds)
-        """
+                 min_safe_time: float = 2.0,
+                 min_uncertain_time: float = 1.0,
+                 min_very_brief_time: float = 0.5):
+        """Initialize SAM segment tracker."""
         self.lines = lines
         self.fps = fps
         
@@ -46,8 +32,8 @@ class SAMSegmentTracker:
         self.min_very_brief_frames = int(min_very_brief_time * fps)
         
         # Tracking data structures
-        self.active_segments = {}  # track_id -> segment_info
-        self.segment_history = defaultdict(deque)  # track_id -> deque of positions
+        self.active_segments = {}
+        self.segment_history = defaultdict(deque)
         self.line_crossings = []
         self.discarded_crossings = []
         
@@ -58,27 +44,9 @@ class SAMSegmentTracker:
             'discarded_crossings': defaultdict(int),
             'total_segments': defaultdict(int)
         }
-        
-        print(f"🎯 SAM Segment Tracker initialized")
-        print(f"   FPS: {fps}")
-        print(f"   Frame thresholds:")
-        print(f"     Safe: ≥{self.min_safe_frames} frames (≥{min_safe_time}s)")
-        print(f"     Uncertain: {self.min_uncertain_frames}-{self.min_safe_frames-1} frames ({min_uncertain_time}-{min_safe_time}s)")
-        print(f"     Very brief: {self.min_very_brief_frames}-{self.min_uncertain_frames-1} frames ({min_very_brief_time}-{min_uncertain_time}s)")
-        print(f"     Discard: <{self.min_very_brief_frames} frames (<{min_very_brief_time}s)")
     
     def update(self, frame_idx: int, detections: List[Dict], tracked_objects=None) -> List[Dict]:
-        """
-        Update tracker with new detections and segmentation masks.
-        
-        Args:
-            frame_idx: Current frame index
-            detections: List of detection dictionaries with masks
-            tracked_objects: Supervision tracked objects (optional)
-            
-        Returns:
-            List of valid crossings detected in this frame
-        """
+        """Update tracker with new detections and segmentation masks."""
         current_crossings = []
         
         # Update active segments
@@ -111,12 +79,13 @@ class SAMSegmentTracker:
             self.segment_history[track_id].append({
                 'frame_idx': frame_idx,
                 'centroid': (centroid_x, centroid_y),
+                'bbox': detection['bbox'],
                 'mask': detection['mask'],
                 'class': detection['class']
             })
             
-            # Keep only recent history (for memory efficiency)
-            max_history = max(30, self.min_safe_frames)  # Much shorter history for SAM
+            # Keep only recent history
+            max_history = max(30, self.min_safe_frames)
             if len(self.segment_history[track_id]) > max_history:
                 self.segment_history[track_id].popleft()
             
@@ -131,33 +100,6 @@ class SAMSegmentTracker:
         self._cleanup_old_segments(frame_idx)
         
         return current_crossings
-    
-    def _generate_track_id(self, detection: Dict, frame_idx: int) -> int:
-        """
-        Generate track ID for detection (simplified approach).
-        In practice, this should use proper object tracking like ByteTrack.
-        """
-        # Simplified: use centroid + class as ID
-        centroid_x, centroid_y = self._get_mask_centroid(detection['mask'])
-        
-        # Find closest existing track
-        min_distance = float('inf')
-        closest_track = None
-        
-        for track_id, segment in self.active_segments.items():
-            if segment['class'] == detection['class']:
-                prev_x, prev_y = segment['centroid']
-                distance = np.sqrt((centroid_x - prev_x)**2 + (centroid_y - prev_y)**2)
-                
-                if distance < min_distance and distance < 50:  # Stricter distance threshold
-                    min_distance = distance
-                    closest_track = track_id
-        
-        if closest_track is not None:
-            return closest_track
-        else:
-            # Create new track ID
-            return max(self.active_segments.keys(), default=0) + 1
     
     def _get_mask_centroid(self, mask: np.ndarray) -> Tuple[Optional[int], Optional[int]]:
         """Get centroid of segmentation mask."""
@@ -175,56 +117,63 @@ class SAMSegmentTracker:
         return centroid_x, centroid_y
     
     def _check_line_crossings(self, track_id: int, segment_info: Dict) -> List[Dict]:
-        """Check if segment crossed any lines."""
+        """Check if segment crossed any lines using bbox centers."""
         crossings = []
         
         if len(self.segment_history[track_id]) < 2:
             return crossings
         
-        # Get current and previous positions
-        current_pos = segment_info['centroid']
+        # Get current and previous bbox centers
+        current_bbox = segment_info['bbox']
+        current_center_x = (current_bbox[0] + current_bbox[2]) / 2
+        
         history = list(self.segment_history[track_id])
         
         # Check crossings with recent history
         for i in range(len(history) - 1):
-            prev_pos = history[i]['centroid']
-            curr_pos = history[i + 1]['centroid']
+            if i + 1 >= len(history):
+                break
+                
+            # Get previous bbox center
+            prev_frame = history[i]
+            curr_frame = history[i + 1]
+            
+            # For current detection, use segment_info bbox
+            if i + 1 == len(history) - 1:
+                curr_center_x = current_center_x
+            else:
+                # Use stored bbox if available, otherwise use centroid
+                if 'bbox' in curr_frame:
+                    curr_bbox = curr_frame['bbox']
+                    curr_center_x = (curr_bbox[0] + curr_bbox[2]) / 2
+                else:
+                    curr_center_x = curr_frame['centroid'][0]
+            
+            # Get previous center
+            if 'bbox' in prev_frame:
+                prev_bbox = prev_frame['bbox']
+                prev_center_x = (prev_bbox[0] + prev_bbox[2]) / 2
+            else:
+                prev_center_x = prev_frame['centroid'][0]
             
             # Check each line
-            for line_idx, line_points in enumerate(self._get_line_pairs()):
-                crossing_info = self._detect_line_crossing(
-                    prev_pos, curr_pos, line_points, track_id, 
+            for line_idx, line_x in enumerate([880, 920, 960, 1000, 1040, 1080, 1120]):
+                crossing_info = self._detect_line_crossing_simple(
+                    prev_center_x, curr_center_x, line_x, track_id, 
                     segment_info['class'], line_idx + 1, segment_info['frame_idx']
                 )
                 
                 if crossing_info:
                     crossings.append(crossing_info)
+                    self.line_crossings.append(crossing_info)
         
         return crossings
     
-    def _get_line_pairs(self) -> List[Tuple[sv.Point, sv.Point]]:
-        """Convert line points to pairs for crossing detection."""
-        line_pairs = []
-        for i in range(0, len(self.lines), 2):
-            if i + 1 < len(self.lines):
-                # Vertical lines
-                line_pairs.append((
-                    sv.Point(self.lines[i].x, 0),
-                    sv.Point(self.lines[i].x, 1080)  # Assume 1080p height
-                ))
-        return line_pairs
-    
-    def _detect_line_crossing(self, prev_pos, curr_pos, line_points, track_id, obj_class, line_id, frame_idx):
-        """Detect if movement crosses a line."""
-        x1, y1 = prev_pos
-        x2, y2 = curr_pos
-        
-        # Line coordinates
-        line_x = line_points[0].x
-        
+    def _detect_line_crossing_simple(self, prev_x, curr_x, line_x, track_id, obj_class, line_id, frame_idx):
+        """Simple line crossing detection using x coordinates."""
         # Check if crossed vertical line
-        if (x1 < line_x < x2) or (x2 < line_x < x1):
-            direction = "IN" if x1 < x2 else "OUT"
+        if (prev_x < line_x < curr_x) or (curr_x < line_x < prev_x):
+            direction = "IN" if prev_x < curr_x else "OUT"
             
             # Get track duration for validation
             track_duration = self._get_track_duration(track_id, frame_idx)
@@ -237,7 +186,10 @@ class SAMSegmentTracker:
                 'frame_idx': frame_idx,
                 'duration_frames': track_duration,
                 'duration_seconds': track_duration / self.fps,
-                'position': curr_pos
+                'position': (curr_x, 0),
+                'prev_x': prev_x,
+                'curr_x': curr_x,
+                'line_x': line_x
             }
             
             return crossing_info
@@ -268,9 +220,7 @@ class SAMSegmentTracker:
             del self.active_segments[track_id]
     
     def validate_and_count_crossings(self) -> Dict:
-        """
-        Validate all crossings using frame-based logic and return counts.
-        """
+        """Validate all crossings using frame-based logic and return counts."""
         results = {
             'safe_crossings': defaultdict(int),
             'uncertain_crossings': defaultdict(int), 
