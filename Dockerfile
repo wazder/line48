@@ -1,36 +1,36 @@
-# VastAI deployment için PyTorch ve CUDA destekli base image
+# Optimized LineLogic Docker Image
 FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
 
-# Sistem paketlerini güncelle ve gerekli araçları yükle
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     ffmpeg \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    libglib2.0-0 \
     libgl1-mesa-glx \
-    git \
-    wget \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Çalışma dizinini ayarla
+# Set working directory
 WORKDIR /workspace/line48
 
-# Python gereksinimlerini kopyala ve yükle
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    ultralytics \
+    supervision \
+    opencv-python \
+    numpy \
+    pandas
 
-# Proje dosyalarını kopyala
-COPY . .
+# Copy project files
+COPY src/ ./src/
+COPY requirements.txt ./
 
-# Model dizinini oluştur
-RUN mkdir -p models
+# Create directories
+RUN mkdir -p videos outputs logs models
 
-# YOLO modelini indir (isteğe bağlı - ilk çalıştırmada otomatik indirilir)
+# Download YOLO model
 RUN python -c "from ultralytics import YOLO; YOLO('yolo11n.pt')"
 
-# Çalışma dizinini src'ye ayarla
+# Set working directory to src
 WORKDIR /workspace/line48/src
 
-# Default komut
+# Default command
 CMD ["python", "run_analysis.py", "--help"]

@@ -5,7 +5,6 @@ Contains all the default configuration values and utility functions.
 
 import os
 import supervision as sv
-from datetime import datetime
 
 # Default video paths (will be overridden during runtime)
 SOURCE_VIDEO_PATH = ""

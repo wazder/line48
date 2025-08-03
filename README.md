@@ -1,154 +1,179 @@
 # LineLogic - Object Tracking and Line Crossing Detection
 
-A computer vision system for detecting and counting objects crossing virtual lines in video streams. The system uses YOLO models for object detection and ByteTrack for object tracking, with advanced frame-based validation logic.
+A computer vision system for detecting and counting objects crossing virtual lines in video streams using YOLO models and ByteTrack tracking with frame-based validation.
 
-## Project Structure
+## 🎯 Features
 
-```
-LineLogic/
-├── src/                    # Main source code
-│   ├── run_analysis.py     # Main analysis runner
-│   ├── logic.py           # Basic tracking logic
-│   ├── frame_logic.py     # Frame-based validation
-│   ├── config.py          # Configuration settings
-│   ├── utils.py           # Utility functions
-│   └── video_config.py    # Video selection utilities
-├── analysis_tools/         # Analysis and debugging scripts
-│   ├── compare_to_ground_truth.py
-│   ├── compare_results.py
-│   ├── analyze_misses.py
-│   └── ... (other analysis scripts)
-├── models/                 # YOLO model files
-├── videos/                 # Input video files
-├── outputs/                # Processed video outputs
-├── logs/                   # Detection logs
-├── training/               # Training data and scripts
-└── envs/                   # Python virtual environments
+- **Object Detection**: YOLO-based detection of people, backpacks, handbags, and suitcases
+- **Line Crossing Detection**: Tracks objects crossing virtual lines with direction detection
+- **Frame-based Validation**: Filters out brief, unreliable detections
+- **Command-line Interface**: Flexible parameter configuration
+- **GPU Accelerated**: Optimized for CUDA-capable devices
+- **SAM Integration**: Optional Segment Anything Model for pixel-perfect segmentation
+
+## 🚀 Quick Start
+
+### 1. Installation
+```bash
+# Clone repository
+git clone https://github.com/wazder/line48.git
+cd line48
+
+# Run optimized setup
+chmod +x setup_optimized.sh
+./setup_optimized.sh
 ```
 
-## Target Classes
+### 2. Basic Usage
+```bash
+cd src
 
-- **person** - People crossing the lines
-- **backpack** - Backpacks carried by people
-- **handbag** - Handbags and purses
-- **suitcase** - Luggage and suitcases
+# Process video with frame-based logic
+python run_analysis.py --video "../videos/your_video.mp4" --frame-logic
 
-## Key Features
+# Custom parameters for RTX 4090
+python run_analysis.py \
+  --video "../videos/your_video.mp4" \
+  --frame-logic \
+  --confidence 0.25 \
+  --iou 0.45 \
+  --imgsz 1280
+```
 
-- **Command-line interface** - Flexible parameter configuration via command line
-- **Automatic video discovery** - Finds videos in videos/, New Videos 2/, and cropped_videos/ directories
-- **Interactive video selection** - Numbered menu for easy video selection
-- **Video cropping with preview** - Interactive crop selection with visual markers
-- **Configurable parameters** - All model and logic parameters adjustable via command line
-- **Frame-based validation** - Filters out brief, unreliable detections
-- **Multi-line detection** - Supports multiple virtual lines
-- **Class-specific thresholds** - Different validation rules per object class
-- **Comprehensive logging** - Detailed logs for analysis and debugging
-- **Enhanced CSV output** - Comprehensive results with parameters and statistics
-- **Visual overlays** - Real-time display of detections and counts
-- **Performance evaluation** - Tools to compare against ground truth
+### 3. SAM Enhanced Analysis (Optional)
+```bash
+# Install SAM dependencies
+pip install segment-anything matplotlib Pillow scipy
 
-## Quick Start
+# Run SAM analysis
+python run_sam_analysis.py \
+  --video "../videos/your_video.mp4" \
+  --sam-model vit_b \
+  --download-sam
+```
 
-1. **Setup Environment:**
-   ```bash
-   # Activate virtual environment
-   envs\lov10-env310\Scripts\activate
-   
-   # Install dependencies
-   pip install -r requirements.txt
-   ```
+## 📊 Current Performance
+- **Person**: 95% accuracy
+- **Backpack**: 79% accuracy  
+- **Handbag**: 44% accuracy
+- **Suitcase**: 85% accuracy
 
-2. **List Available Videos:**
-   ```bash
-   cd src
-   python run_analysis.py --list-videos
-   ```
+## 🛠️ Dependencies
 
-3. **Run Analysis (Interactive):**
-   ```bash
-   python run_analysis.py
-   ```
+**Core Requirements:**
+- ultralytics>=8.0.0
+- supervision>=0.18.0
+- opencv-python>=4.8.0
+- numpy>=1.24.0
+- pandas>=1.5.0
+- torch>=2.0.0
+- torchvision>=0.15.0
 
-4. **Run Analysis (Command Line):**
-   ```bash
-   # Process specific video with frame logic
-   python run_analysis.py --video "../videos/New Videos 2/IMG_0015_blurred.MOV" --frame-logic
-   
-   # Process with custom parameters
-   python run_analysis.py --video "../videos/New Videos 2/IMG_0015_blurred.MOV" --confidence 0.3 --iou 0.4 --imgsz 1280
-   ```
+**SAM Optional:**
+- segment-anything>=1.0
+- matplotlib>=3.6.0
+- Pillow>=9.0.0
+- scipy>=1.9.0
 
-5. **Create Cropped Video:**
-   ```bash
-   python run_analysis.py --crop-video "../videos/New Videos 2/IMG_0015_blurred.MOV"
-   ```
+## 📁 Output Files
 
-6. **Compare Results:**
-   ```bash
-   python analysis_tools/compare_to_ground_truth.py
-   ```
+- **Processed Video**: `outputs/video_processed_timestamp.mp4`
+- **Detection Log**: `logs/video_log_timestamp.csv`
+- **Results Summary**: `logs/video_results_timestamp.csv`
 
-## Performance
-
-Current performance on test video:
-- **Person:** 95% accuracy (84/84 detected)
-- **Backpack:** 79% accuracy (30/38 detected)
-- **Handbag:** 44% accuracy (24/54 detected) - Main challenge
-- **Suitcase:** 85% accuracy (11/13 detected)
-
-## Analysis Tools
-
-The `analysis_tools/` directory contains scripts for:
-- Comparing model results against ground truth
-- Analyzing missed detections
-- Debugging confidence distributions
-- Performance optimization
-
-## Configuration
+## ⚙️ Configuration
 
 ### Command-Line Parameters
+```bash
+--confidence 0.25      # YOLO confidence threshold
+--iou 0.45            # NMS IoU threshold
+--imgsz 1280          # Input image size
+--frame-logic         # Enable frame-based validation
+--device cuda:0       # GPU device
+```
 
-All parameters can be configured via command line:
+### Frame Logic Parameters
+```bash
+--min-safe-time 0.5        # Minimum time for safe predictions
+--min-uncertain-time 0.28  # Minimum time for uncertain predictions
+--min-very-brief-time 0.17 # Minimum time for very brief predictions
+```
 
-**Model Parameters:**
-- `--confidence`: YOLO confidence threshold (default: 0.25)
-- `--iou`: NMS IoU threshold (default: 0.45)
-- `--imgsz`: Input image size (default: 1024)
+## 🎬 VastAI Deployment
 
-**Frame Logic Parameters:**
-- `--min-safe-time`: Minimum time for safe predictions (default: 0.5s)
-- `--min-uncertain-time`: Minimum time for uncertain predictions (default: 0.28s)
-- `--min-very-brief-time`: Minimum time for very brief predictions (default: 0.17s)
+```bash
+# Quick VastAI setup
+cd /workspace
+git clone https://github.com/wazder/line48.git
+cd line48
+./setup_optimized.sh
 
-**Logic Selection:**
-- `--frame-logic`: Use frame-based validation (default)
-- `--basic-logic`: Use basic tracking logic
+# Download video from Google Drive
+gdown "YOUR_GOOGLE_DRIVE_LINK" -O videos/input_video.mp4
 
-### File Configuration
+# Run analysis
+cd src
+python run_analysis.py --video "../videos/input_video.mp4" --frame-logic
+```
 
-Additional parameters can be adjusted in `src/config.py`:
-- Line positions and spacing
-- Output paths and logging
-- Video selection defaults
+See [VASTAI_DEPLOYMENT.md](VASTAI_DEPLOYMENT.md) for detailed deployment instructions.
 
-## Dependencies
+## 🔬 SAM Integration
 
-- ultralytics (YOLO models)
-- supervision (tracking and visualization)
-- opencv-python (video processing)
-- numpy (numerical operations)
-- pandas (data analysis)
-- argparse (command-line interface)
-- subprocess (FFmpeg integration)
+For higher accuracy with pixel-perfect segmentation:
 
-## Output Files
+```bash
+# Install SAM dependencies
+pip install segment-anything matplotlib Pillow scipy
 
-The system generates several output files:
+# Run SAM analysis
+python run_sam_analysis.py --video "../videos/video.mp4" --sam-model vit_b
+```
 
-- **Processed Video**: `outputs/[video_name]_processed_[timestamp].mp4`
-- **Detection Log**: `logs/[video_name]_log_[timestamp].csv`
-- **Results Summary**: `logs/[video_name]_results_[timestamp].csv`
-- **Cropped Videos**: `videos/cropped_videos/[video_name]_cropped.mp4`
+See [SAM_LINELOGIC_GUIDE.md](SAM_LINELOGIC_GUIDE.md) for detailed SAM usage.
 
-The results CSV includes comprehensive analysis data with parameters, detection results, success rates, and analysis notes. 
+## 📈 Analysis Tools
+
+The `analysis_tools/` directory contains scripts for:
+- Comparing results against ground truth
+- Analyzing missed detections  
+- Performance optimization
+- Confidence distribution analysis
+
+## 🐳 Docker Usage
+
+```bash
+# Build and run
+docker build -t linelogic .
+docker run --gpus all -it --rm \
+  -v $(pwd)/videos:/workspace/line48/videos \
+  -v $(pwd)/outputs:/workspace/line48/outputs \
+  linelogic
+```
+
+## 📋 Project Structure
+
+```
+line48/
+├── src/                    # Main source code
+│   ├── run_analysis.py     # Main analysis runner
+│   ├── run_sam_analysis.py # SAM-enhanced analysis
+│   ├── config.py           # Configuration settings
+│   ├── utils.py            # Utility functions
+│   └── frame_logic.py      # Frame-based validation
+├── analysis_tools/         # Analysis and debugging scripts
+├── videos/                 # Input video files
+├── outputs/                # Processed video outputs
+└── logs/                   # Detection logs and results
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

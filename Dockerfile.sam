@@ -1,0 +1,54 @@
+# SAM + LineLogic Docker Image for VastAI
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+
+# Sistem paketlerini güncelle
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libglib2.0-0 \
+    libgl1-mesa-glx \
+    git \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Çalışma dizinini ayarla
+WORKDIR /workspace/line48
+
+# SAM ve diğer gereksinimleri yükle
+RUN pip install --no-cache-dir \
+    segment-anything \
+    ultralytics \
+    supervision \
+    opencv-python \
+    numpy \
+    matplotlib \
+    Pillow \
+    scipy \
+    pandas
+
+# Proje dosyalarını kopyala
+COPY . .
+
+# Model dizinini oluştur
+RUN mkdir -p models sam_models
+
+# SAM modellerini indir (ViT-B - fastest)
+RUN cd sam_models && \
+    wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth
+
+# YOLO modelini indir
+RUN python -c "from ultralytics import YOLO; YOLO('yolo11n.pt')"
+
+# Gerekli dizinleri oluştur
+RUN mkdir -p videos outputs logs
+
+# SAM checkpoint'lerini src'ye link et
+RUN ln -sf /workspace/line48/sam_models/*.pth src/
+
+# Çalışma dizinini src'ye ayarla
+WORKDIR /workspace/line48/src
+
+# Default komut
+CMD ["python", "run_sam_analysis.py", "--help"]

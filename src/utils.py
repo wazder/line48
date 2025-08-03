@@ -1,16 +1,6 @@
-import sys
 import os
-
-# Add virtual environment to Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(current_dir)
-env_path = os.path.join(project_root, "envs", "lov10-env310", "Lib", "site-packages")
-if os.path.exists(env_path):
-    sys.path.insert(0, env_path)
-
 import cv2
 from ultralytics import YOLO
-import onnxruntime as ort
 
 def draw_text_with_background(img, text, org, font, scale, text_color, bg_color, thickness=1, alpha=0.6):
     """Draw text with background rectangle."""

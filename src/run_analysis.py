@@ -3,19 +3,10 @@ Enhanced LineLogic Analysis Runner with Command-Line Interface
 Main entry point for video analysis with modular architecture.
 """
 
-import sys
 import os
 import argparse
 import csv
 from datetime import datetime
-
-# Add virtual environment to Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(current_dir)
-env_path = os.path.join(project_root, "envs", "lov10-env310", "Lib", "site-packages")
-if os.path.exists(env_path):
-    sys.path.insert(0, env_path)
-    
 import supervision as sv
 from supervision import VideoInfo
 import numpy as np
@@ -28,6 +19,7 @@ from video_utils import interactive_video_selection, display_video_list
 from video_cropper import interactive_crop_selection
 from line_config import interactive_line_setup
 from results_exporter import export_results_csv
+from detailed_video_processor import process_video_with_detailed_info
 # These imports will be moved to where they're needed to avoid circular imports
 
 def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kwargs):
@@ -37,7 +29,8 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
     Args:
         source_video_path: Path to source video
         use_frame_logic: Whether to use frame-based validation
-        **kwargs: Additional parameters (confidence, iou, imgsz, etc.)
+        line_config: Line configuration (optional)
+        **kwargs: Additional parameters (confidence, iou, imgsz, detailed_info, etc.)
     """
     
     # Import config after setting up video path
@@ -194,14 +187,37 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
             return frame
         
         # Process video
-        try:
-            sv.process_video(
-                source_path=source_video_path,
-                target_path=config.TARGET_VIDEO_PATH,
-                callback=callback
-            )
-        except StopIteration:
-            print("\n🛑 Stopped manually.")
+        detailed_info = kwargs.get('detailed_info', False)
+        
+        if detailed_info:
+            print("🔍 Using detailed frame-by-frame processing...")
+            try:
+                process_video_with_detailed_info(
+                    source_path=source_video_path,
+                    target_path=config.TARGET_VIDEO_PATH,
+                    model=model_single,
+                    tracker=tracker,
+                    line_zones=LINES,
+                    confidence=confidence,
+                    verbose=True
+                )
+            except Exception as e:
+                print(f"❌ Detailed processing failed: {e}")
+                print("⚠️ Falling back to standard processing...")
+                sv.process_video(
+                    source_path=source_video_path,
+                    target_path=config.TARGET_VIDEO_PATH,
+                    callback=callback
+                )
+        else:
+            try:
+                sv.process_video(
+                    source_path=source_video_path,
+                    target_path=config.TARGET_VIDEO_PATH,
+                    callback=callback
+                )
+            except StopIteration:
+                print("\n🛑 Stopped manually.")
         
         # Get results
         results_summary = tracker.get_results_summary()
@@ -333,6 +349,8 @@ Examples:
     
     # Processing parameters
     parser.add_argument("--max-frames", type=int, help="Maximum frames to process (default: None = all frames)")
+    parser.add_argument("--detailed-info", action="store_true", 
+                       help="Show detailed frame-by-frame information overlay")
     
     return parser.parse_args()
 
@@ -668,8 +686,10 @@ def main():
             'min_safe_time': args.min_safe_time,
             'min_uncertain_time': args.min_uncertain_time,
             'min_very_brief_time': args.min_very_brief_time,
-            'max_frames': args.max_frames
+            'max_frames': args.max_frames,
+            'detailed_info': args.detailed_info
         }
+        line_config = None
     else:
         # Use interactive setup
         result = interactive_setup()
