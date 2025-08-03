@@ -117,7 +117,7 @@ class SAMLineLogic:
             class_id = int(box.cls[0])
             confidence = float(box.conf[0])
             
-            if class_id in self.class_ids and confidence > 0.25:
+            if class_id in self.class_ids and confidence > 0.5:  # Much higher confidence for SAM
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                 class_name = self.yolo_model.names[class_id]
                 
@@ -154,6 +154,13 @@ class SAMLineLogic:
                 
                 if len(masks) > 0:
                     mask = masks[0]  # Use first (and only) mask
+                    mask_area = np.sum(mask)
+                    
+                    # Filter out very small masks (noise)
+                    min_mask_area = 1000  # Minimum 1000 pixels
+                    if mask_area < min_mask_area:
+                        continue
+                        
                     detection['mask'] = mask
                     detection['mask_score'] = float(scores[0])
                     

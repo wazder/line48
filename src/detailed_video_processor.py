@@ -127,8 +127,32 @@ def process_video_with_detailed_info(source_path: str, target_path: str,
     
     # Output video writer (with extra height for info panel)
     output_height = frame_height + 200
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(target_path, fourcc, fps, (frame_width, output_height))
+    
+    # Try different codecs for better compatibility
+    try:
+        # First try H.264 codec
+        fourcc = cv2.VideoWriter_fourcc(*'H264')
+        out = cv2.VideoWriter(target_path, fourcc, fps, (frame_width, output_height))
+        
+        if not out.isOpened():
+            print("⚠️ H.264 codec failed, trying XVID...")
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            target_path = target_path.replace('.mp4', '.avi')
+            out = cv2.VideoWriter(target_path, fourcc, fps, (frame_width, output_height))
+            
+        if not out.isOpened():
+            print("⚠️ XVID codec failed, trying MJPG...")
+            fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+            out = cv2.VideoWriter(target_path, fourcc, fps, (frame_width, output_height))
+            
+        if not out.isOpened():
+            raise ValueError("All video codecs failed")
+            
+        print(f"✅ Video writer initialized with codec: {fourcc}")
+        
+    except Exception as e:
+        print(f"❌ Video writer setup failed: {e}")
+        raise
     
     frame_idx = 0
     start_time = time.time()

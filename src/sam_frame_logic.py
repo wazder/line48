@@ -19,9 +19,9 @@ class SAMSegmentTracker:
     def __init__(self, 
                  lines: List[sv.Point],
                  fps: float = 30.0,
-                 min_safe_time: float = 0.5,
-                 min_uncertain_time: float = 0.28,
-                 min_very_brief_time: float = 0.17):
+                 min_safe_time: float = 2.0,    # Much stricter for SAM
+                 min_uncertain_time: float = 1.0,  # Much stricter for SAM
+                 min_very_brief_time: float = 0.5): # Much stricter for SAM
         """
         Initialize SAM segment tracker.
         
@@ -114,7 +114,7 @@ class SAMSegmentTracker:
             })
             
             # Keep only recent history (for memory efficiency)
-            max_history = max(100, self.min_safe_frames * 2)
+            max_history = max(30, self.min_safe_frames)  # Much shorter history for SAM
             if len(self.segment_history[track_id]) > max_history:
                 self.segment_history[track_id].popleft()
             
@@ -147,7 +147,7 @@ class SAMSegmentTracker:
                 prev_x, prev_y = segment['centroid']
                 distance = np.sqrt((centroid_x - prev_x)**2 + (centroid_y - prev_y)**2)
                 
-                if distance < min_distance and distance < 100:  # Max distance threshold
+                if distance < min_distance and distance < 50:  # Stricter distance threshold
                     min_distance = distance
                     closest_track = track_id
         

@@ -164,10 +164,40 @@ def run_sam_analysis(args):
         min_very_brief_time=args.min_very_brief_time
     )
     
-    # Setup video writer
+    # Setup video writer with better codec
     if args.save_video:
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+        # Try different codecs for better compatibility
+        try:
+            # Adjust frame dimensions for detailed info
+            output_width = frame_width
+            output_height = frame_height + 200 if args.detailed_info else frame_height
+            
+            # First try H.264 codec
+            fourcc = cv2.VideoWriter_fourcc(*'H264')
+            out = cv2.VideoWriter(output_video_path, fourcc, fps, (output_width, output_height))
+            
+            # Test if writer is opened
+            if not out.isOpened():
+                print("⚠️ H.264 codec failed, trying XVID...")
+                fourcc = cv2.VideoWriter_fourcc(*'XVID')
+                output_video_path = output_video_path.replace('.mp4', '.avi')  # Change extension for XVID
+                out = cv2.VideoWriter(output_video_path, fourcc, fps, (output_width, output_height))
+                
+            if not out.isOpened():
+                print("⚠️ XVID codec failed, trying MJPG...")
+                fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+                output_video_path = output_video_path.replace('.avi', '.avi')  # Keep AVI for MJPG
+                out = cv2.VideoWriter(output_video_path, fourcc, fps, (output_width, output_height))
+                
+            if not out.isOpened():
+                print("❌ All codecs failed, disabling video output")
+                args.save_video = False
+            else:
+                print(f"✅ Video writer initialized with codec: {fourcc}")
+                
+        except Exception as e:
+            print(f"❌ Video writer setup failed: {e}")
+            args.save_video = False
     
     # Processing variables
     frame_idx = 0
