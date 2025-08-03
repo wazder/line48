@@ -276,7 +276,7 @@ def run_sam_analysis(args):
             
             # Add detailed frame info if requested
             if args.detailed_info:
-                from detailed_video_processor import add_detailed_frame_info
+                # from detailed_video_processor import add_detailed_frame_info
                 
                 # Prepare detection info for detailed display
                 detection_info = []
@@ -288,9 +288,10 @@ def run_sam_analysis(args):
                         'mask_area': detection.get('mask_area', 0)
                     })
                 
-                segmented_frame = add_detailed_frame_info(
-                    segmented_frame, frame_idx, detection_info, crossings, fps
-                )
+                # Add basic frame info (detailed info not available)
+                info_text = f"Frame: {frame_idx}/{total_frames} | SAM Detections: {len(detections)}"
+                cv2.putText(segmented_frame, info_text, (10, 30), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             else:
                 # Add basic frame info
                 info_text = f"Frame: {frame_idx}/{total_frames} | SAM Detections: {len(detections)}"

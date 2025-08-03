@@ -19,7 +19,7 @@ from video_utils import interactive_video_selection, display_video_list
 from video_cropper import interactive_crop_selection
 from line_config import interactive_line_setup
 from results_exporter import export_results_csv
-from detailed_video_processor import process_video_with_detailed_info
+# from detailed_video_processor import process_video_with_detailed_info
 # These imports will be moved to where they're needed to avoid circular imports
 
 def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kwargs):
@@ -190,25 +190,12 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
         detailed_info = kwargs.get('detailed_info', False)
         
         if detailed_info:
-            print("🔍 Using detailed frame-by-frame processing...")
-            try:
-                process_video_with_detailed_info(
-                    source_path=source_video_path,
-                    target_path=config.TARGET_VIDEO_PATH,
-                    model=model_single,
-                    tracker=tracker,
-                    line_zones=LINES,
-                    confidence=confidence,
-                    verbose=True
-                )
-            except Exception as e:
-                print(f"❌ Detailed processing failed: {e}")
-                print("⚠️ Falling back to standard processing...")
-                sv.process_video(
-                    source_path=source_video_path,
-                    target_path=config.TARGET_VIDEO_PATH,
-                    callback=callback
-                )
+            print("🔍 Detailed processing not available, using standard processing...")
+            sv.process_video(
+                source_path=source_video_path,
+                target_path=config.TARGET_VIDEO_PATH,
+                callback=callback
+            )
         else:
             try:
                 sv.process_video(
