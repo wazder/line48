@@ -24,6 +24,7 @@ from sam_utils import SAMLineLogic, download_sam_model
 from sam_frame_logic import SAMSegmentTracker
 import config
 import supervision as sv
+from ultralytics import YOLO
 
 def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detailed_info: bool = False):
     """
@@ -98,6 +99,9 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
     for point in config.LINE_POINTS:
         lines.append(sv.Point(point.x, frame_height))
     
+    # Initialize ByteTracker for proper tracking
+    byte_tracker = sv.ByteTracker()
+    
     # Initialize segment tracker with RELAXED parameters
     segment_tracker = SAMSegmentTracker(
         lines=lines,
@@ -144,16 +148,57 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
             # SAM detection and segmentation with HIGHER confidence
             segmented_frame, detections = sam_logic.detect_and_segment(frame)
             
-            # Additional filtering for SAM results - RELAXED parameters
-            filtered_detections = []
-            for detection in detections:
-                # RELAXED filtering: lower confidence and smaller mask threshold
-                if (detection.get('confidence', 0) > 0.25 and  # Match YOLO's 0.25
-                    detection.get('mask') is not None and
-                    np.sum(detection['mask']) > 400):  # Further reduced from 800 to 400 pixels
-                    filtered_detections.append(detection)
+            # Convert SAM detections to supervision format for tracking
+            if detections:
+                # Prepare detection arrays for supervision
+                xyxy = []
+                confidence_scores = []
+                class_ids = []
+                
+                for detection in detections:
+                    if (detection.get('confidence', 0) > 0.25 and  # Match YOLO's 0.25
+                        detection.get('mask') is not None and
+                        np.sum(detection['mask']) > 400):  # Filter small masks
+                        
+                        bbox = detection['bbox']
+                        xyxy.append([bbox[0], bbox[1], bbox[2], bbox[3]])
+                        confidence_scores.append(detection['confidence'])
+                        
+                        # Map class name to ID
+                        class_map = {'person': 0, 'backpack': 24, 'handbag': 26, 'suitcase': 28}
+                        class_ids.append(class_map.get(detection['class'], 0))
+                
+                if xyxy:
+                    # Create supervision detections
+                    sam_detections = sv.Detections(
+                        xyxy=np.array(xyxy),
+                        confidence=np.array(confidence_scores),
+                        class_id=np.array(class_ids)
+                    )
+                    
+                    # Track with ByteTracker
+                    tracked_detections = byte_tracker.update_with_detections(sam_detections)
+                    
+                    # Convert back to our format with track IDs
+                    filtered_detections = []
+                    for i, detection in enumerate(detections):
+                        if (detection.get('confidence', 0) > 0.25 and
+                            detection.get('mask') is not None and
+                            np.sum(detection['mask']) > 400):
+                            
+                            # Add track ID if available
+                            if i < len(tracked_detections.tracker_id):
+                                detection['track_id'] = int(tracked_detections.tracker_id[i])
+                            else:
+                                detection['track_id'] = -1
+                            
+                            filtered_detections.append(detection)
+                else:
+                    filtered_detections = []
+            else:
+                filtered_detections = []
             
-            # Update segment tracker with filtered detections
+            # Update segment tracker with tracked detections
             crossings = segment_tracker.update(frame_idx, filtered_detections)
             
             # Log detections
@@ -163,6 +208,7 @@ def run_optimized_sam_analysis(video_path: str, sam_model: str = "vit_b", detail
                     'timestamp': frame_idx / fps,
                     'class': detection['class'],
                     'confidence': detection['confidence'],
+                    'track_id': detection.get('track_id', -1),
                     'bbox_x1': detection['bbox'][0],
                     'bbox_y1': detection['bbox'][1],
                     'bbox_x2': detection['bbox'][2],
