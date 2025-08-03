@@ -19,6 +19,7 @@ from video_utils import interactive_video_selection, display_video_list
 from video_cropper import interactive_crop_selection
 from line_config import interactive_line_setup
 from results_exporter import export_results_csv
+from frame_overlay import FrameOverlay
 # from detailed_video_processor import process_video_with_detailed_info
 # These imports will be moved to where they're needed to avoid circular imports
 
@@ -49,6 +50,11 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
     config.TARGET_VIDEO_PATH = config.get_next_filename(base_output_name, ".mp4")
     config.LOG_CSV_PATH = config.get_next_filename(base_log_name, ".csv")
     RESULTS_CSV_PATH = config.get_next_filename(base_results_name, ".csv")
+    
+    # Update video dimensions for overlay
+    video_info = VideoInfo.from_video_path(source_video_path)
+    overlay_height = 150
+    total_height = video_info.height + overlay_height
     
     # Create output directories
     os.makedirs(os.path.dirname(config.TARGET_VIDEO_PATH), exist_ok=True)
@@ -147,7 +153,10 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
             for _ in LINE_IDS
         ]
         
-                # Create callback with frame logic
+                # Initialize frame overlay system
+        frame_overlay = FrameOverlay(video_info.height, video_info.width, overlay_height=150)
+        
+        # Create callback with frame logic and overlay
         def callback(frame: np.ndarray, index: int) -> np.ndarray:
             # Check max frames limit
             max_frames = kwargs.get('max_frames')
@@ -171,7 +180,7 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
             tracker.update_object_presence(detections, index, COCO_NAMES)
             
             # Process line crossings
-            tracker.process_line_crossing(detections, index, LINES, LINE_IDS, COCO_NAMES)
+            crossings = tracker.process_line_crossing(detections, index, LINES, LINE_IDS, COCO_NAMES)
             
             # Annotate frame
             frame = sv.BoxAnnotator().annotate(frame, detections)
@@ -181,10 +190,30 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
             for line, line_annotator in zip(LINES, line_annotators):
                 frame = line_annotator.annotate(frame, line)
             
+            # Add line crossing indicators
+            frame = frame_overlay.draw_line_indicators(frame, crossings)
+            
+            # Create overlay with information
+            overlay_frame = frame_overlay.create_complete_overlay(
+                original_frame=frame,
+                line_crossings=crossings,
+                detections=[{
+                    'class': COCO_NAMES.get(det.class_id, 'unknown'),
+                    'confidence': det.confidence,
+                    'track_id': det.tracker_id,
+                    'bbox': det.xyxy[0] if len(det.xyxy) > 0 else [0, 0, 0, 0]
+                } for det in detections],
+                current_frame=index,
+                total_frames=video_info.total_frames,
+                fps=video_info.fps,
+                processing_time=None,
+                timestamp=f"Frame {index}"
+            )
+            
             if index % 100 == 0:
                 print(f"🟢 Processed frame {index}")
  
-            return frame
+            return overlay_frame
         
         # Process video
         detailed_info = kwargs.get('detailed_info', False)

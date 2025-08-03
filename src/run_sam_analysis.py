@@ -24,6 +24,7 @@ sys.path.insert(0, current_dir)
 # Import SAM modules
 from sam_utils import SAMLineLogic, download_sam_model
 from sam_frame_logic import SAMSegmentTracker
+from frame_overlay import FrameOverlay
 import config
 import supervision as sv
 
@@ -48,19 +49,19 @@ def setup_arguments():
     # YOLO parameters
     parser.add_argument("--yolo-model", type=str, default="yolo11n.pt",
                        help="YOLO model for object detection")
-    parser.add_argument("--confidence", type=float, default=0.25,
+    parser.add_argument("--confidence", type=float, default=0.2,
                        help="YOLO confidence threshold")
     parser.add_argument("--iou", type=float, default=0.45,
                        help="YOLO NMS IoU threshold")
-    parser.add_argument("--imgsz", type=int, default=1280,
+    parser.add_argument("--imgsz", type=int, default=640,
                        help="YOLO input image size")
     
     # Frame logic parameters
-    parser.add_argument("--min-safe-time", type=float, default=0.5,
+    parser.add_argument("--min-safe-time", type=float, default=0.3,
                        help="Minimum time for safe predictions (seconds)")
-    parser.add_argument("--min-uncertain-time", type=float, default=0.28,
+    parser.add_argument("--min-uncertain-time", type=float, default=0.2,
                        help="Minimum time for uncertain predictions (seconds)")
-    parser.add_argument("--min-very-brief-time", type=float, default=0.17,
+    parser.add_argument("--min-very-brief-time", type=float, default=0.1,
                        help="Minimum time for very brief predictions (seconds)")
     
     # Processing parameters
@@ -164,13 +165,16 @@ def run_sam_analysis(args):
         min_very_brief_time=args.min_very_brief_time
     )
     
-    # Setup video writer with better codec
+    # Initialize frame overlay system
+    frame_overlay = FrameOverlay(frame_height, frame_width, overlay_height=150)
+    
+    # Setup video writer with overlay
     if args.save_video:
         # Try different codecs for better compatibility
         try:
-            # Adjust frame dimensions for detailed info
+            # Use overlay dimensions
             output_width = frame_width
-            output_height = frame_height + 200 if args.detailed_info else frame_height
+            output_height = frame_overlay.total_height
             
             # First try H.264 codec
             fourcc = cv2.VideoWriter_fourcc(*'H264')
@@ -194,6 +198,7 @@ def run_sam_analysis(args):
                 args.save_video = False
             else:
                 print(f"✅ Video writer initialized with codec: {fourcc}")
+                print(f"📐 Output dimensions: {output_width}x{output_height}")
                 
         except Exception as e:
             print(f"❌ Video writer setup failed: {e}")
@@ -274,37 +279,28 @@ def run_sam_analysis(args):
                            (line_point.x + 5, 30), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
             
-            # Add detailed frame info if requested
-            if args.detailed_info:
-                # from detailed_video_processor import add_detailed_frame_info
-                
-                # Prepare detection info for detailed display
-                detection_info = []
-                for detection in detections:
-                    detection_info.append({
-                        'class': detection['class'],
-                        'confidence': detection['confidence'],
-                        'track_id': detection.get('track_id', 'N/A'),
-                        'mask_area': detection.get('mask_area', 0)
-                    })
-                
-                # Add basic frame info (detailed info not available)
-                info_text = f"Frame: {frame_idx}/{total_frames} | SAM Detections: {len(detections)}"
-                cv2.putText(segmented_frame, info_text, (10, 30), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-            else:
-                # Add basic frame info
-                info_text = f"Frame: {frame_idx}/{total_frames} | SAM Detections: {len(detections)}"
-                cv2.putText(segmented_frame, info_text, (10, 30), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            # Add line crossing indicators to main frame
+            segmented_frame = frame_overlay.draw_line_indicators(segmented_frame, crossings)
             
-            # Save frame
+            # Create overlay with all information
+            overlay_frame = frame_overlay.create_complete_overlay(
+                original_frame=segmented_frame,
+                line_crossings=crossings,
+                detections=detections,
+                current_frame=frame_idx,
+                total_frames=total_frames,
+                fps=fps,
+                processing_time=None,
+                timestamp=f"Frame {frame_idx}"
+            )
+            
+            # Save frame with overlay
             if args.save_video:
-                out.write(segmented_frame)
+                out.write(overlay_frame)
             
-            # Show frame
+            # Show frame with overlay
             if args.show_video:
-                cv2.imshow('SAM + LineLogic', segmented_frame)
+                cv2.imshow('SAM + LineLogic with Overlay', overlay_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
             

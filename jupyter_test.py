@@ -83,16 +83,25 @@ def run_test():
         yolo_files = glob.glob('logs/*results*.csv')
         yolo_files = [f for f in yolo_files if 'sam' not in f]
         
-        # SAM sonuçları
-        sam_files = glob.glob('logs/*sam_results*.csv')
+        # SAM sonuçları - hem sam_results hem de sam_optimized_results
+        sam_files = glob.glob('logs/*sam*results*.csv')
+        
+        print(f"🔍 Bulunan dosyalar:")
+        print(f"   YOLO dosyaları: {yolo_files}")
+        print(f"   SAM dosyaları: {sam_files}")
         
         if yolo_files and sam_files:
             latest_yolo = max(yolo_files, key=os.path.getctime)
             latest_sam = max(sam_files, key=os.path.getctime)
             
+            print(f"\n📈 Kullanılan dosyalar:")
+            print(f"   YOLO: {latest_yolo}")
+            print(f"   SAM: {latest_sam}")
+            
             df_yolo = pd.read_csv(latest_yolo)
             df_sam = pd.read_csv(latest_sam)
             
+            print(f"\n📊 Karşılaştırma Tablosu:")
             print(f"{'Sınıf':<12} {'YOLO':<8} {'SAM':<8} {'Fark':<8}")
             print("-" * 40)
             
@@ -134,9 +143,13 @@ def run_test():
                 
         else:
             print("❌ Sonuç dosyaları bulunamadı")
+            print(f"   YOLO dosyaları: {len(yolo_files)}")
+            print(f"   SAM dosyaları: {len(sam_files)}")
             
     except Exception as e:
         print(f"❌ Karşılaştırma hatası: {e}")
+        import traceback
+        traceback.print_exc()
     
     print(f"\n🎉 Test tamamlandı!")
     print(f"⏱️ Toplam süre: {yolo_time + sam_time:.1f}s")

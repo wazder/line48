@@ -14,9 +14,9 @@ class SAMSegmentTracker:
     def __init__(self, 
                  lines: List[sv.Point],
                  fps: float = 30.0,
-                 min_safe_time: float = 2.0,
-                 min_uncertain_time: float = 1.0,
-                 min_very_brief_time: float = 0.5):
+                 min_safe_time: float = 0.5,    # Yumuşatıldı
+                 min_uncertain_time: float = 0.3, # Yumuşatıldı
+                 min_very_brief_time: float = 0.1): # Yumuşatıldı
         """Initialize SAM segment tracker."""
         self.lines = lines
         self.fps = fps
@@ -156,8 +156,9 @@ class SAMSegmentTracker:
             else:
                 prev_center_x = prev_frame['centroid'][0]
             
-            # Check each line
-            for line_idx, line_x in enumerate([880, 920, 960, 1000, 1040, 1080, 1120]):
+            # Check each line using actual line points
+            for line_idx, line_point in enumerate(self.lines):
+                line_x = line_point.x
                 crossing_info = self._detect_line_crossing_simple(
                     prev_center_x, curr_center_x, line_x, track_id, 
                     segment_info['class'], line_idx + 1, segment_info['frame_idx']
@@ -170,13 +171,27 @@ class SAMSegmentTracker:
         return crossings
     
     def _detect_line_crossing_simple(self, prev_x, curr_x, line_x, track_id, obj_class, line_id, frame_idx):
-        """Simple line crossing detection using x coordinates."""
-        # Check if crossed vertical line
+        """Improved line crossing detection using x coordinates."""
+        # Add tolerance for line crossing detection
+        tolerance = 10  # pixels
+        
+        # Check if crossed vertical line with tolerance
+        line_crossed = False
         if (prev_x < line_x < curr_x) or (curr_x < line_x < prev_x):
+            line_crossed = True
+        elif abs(prev_x - line_x) <= tolerance and abs(curr_x - line_x) <= tolerance:
+            # Object is very close to line
+            line_crossed = True
+        
+        if line_crossed:
             direction = "IN" if prev_x < curr_x else "OUT"
             
             # Get track duration for validation
             track_duration = self._get_track_duration(track_id, frame_idx)
+            
+            # Add confidence based on movement distance
+            movement_distance = abs(curr_x - prev_x)
+            confidence = min(1.0, movement_distance / 50.0)  # Normalize confidence
             
             crossing_info = {
                 'track_id': track_id,
@@ -189,8 +204,14 @@ class SAMSegmentTracker:
                 'position': (curr_x, 0),
                 'prev_x': prev_x,
                 'curr_x': curr_x,
-                'line_x': line_x
+                'line_x': line_x,
+                'confidence': confidence,
+                'movement_distance': movement_distance
             }
+            
+            print(f"🎯 Line crossing detected: {obj_class} (ID:{track_id}) crossed line {line_id} at frame {frame_idx}")
+            print(f"   Movement: {prev_x:.1f} → {curr_x:.1f} (line at {line_x})")
+            print(f"   Direction: {direction}, Confidence: {confidence:.2f}")
             
             return crossing_info
         
