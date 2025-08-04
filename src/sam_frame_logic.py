@@ -20,19 +20,30 @@ class SAMSegmentTracker:
         """Initialize SAM segment tracker."""
         # Extract x-coordinates from LineZone objects
         self.line_x_positions = []
-        for line_zone in lines:
+        print(f"🔧 Initializing SAM Tracker with {len(lines)} lines:")
+        
+        for i, line_zone in enumerate(lines):
             # LineZone objects have start and end points, extract x-coordinate from start
             if hasattr(line_zone, 'start') and hasattr(line_zone.start, 'x'):
-                self.line_x_positions.append(line_zone.start.x)
+                x_pos = line_zone.start.x
+                self.line_x_positions.append(x_pos)
+                print(f"   Line {i+1}: x={x_pos} (from start point)")
             else:
                 # Fallback: try to access as a point or tuple
                 if hasattr(line_zone, 'x'):
-                    self.line_x_positions.append(line_zone.x)
+                    x_pos = line_zone.x
+                    self.line_x_positions.append(x_pos)
+                    print(f"   Line {i+1}: x={x_pos} (direct access)")
                 elif isinstance(line_zone, (list, tuple)) and len(line_zone) > 0:
-                    self.line_x_positions.append(line_zone[0])
+                    x_pos = line_zone[0]
+                    self.line_x_positions.append(x_pos)
+                    print(f"   Line {i+1}: x={x_pos} (from tuple)")
                 else:
                     print(f"⚠️ Warning: Could not extract x-coordinate from line_zone: {line_zone}")
                     self.line_x_positions.append(0)  # Default fallback
+                    print(f"   Line {i+1}: x=0 (fallback)")
+        
+        print(f"📏 Final line x-positions: {self.line_x_positions}")
         
         self.lines = lines
         self.fps = fps
@@ -65,20 +76,27 @@ class SAMSegmentTracker:
         """Update tracker with new detections and segmentation masks."""
         current_crossings = []
         
+        print(f"🔄 Frame {frame_idx}: Processing {len(detections)} detections")
+        
         # Update active segments
         for detection in detections:
             if 'mask' not in detection or detection['mask'] is None:
+                print(f"   ⚠️ Detection {detection.get('track_id', 'unknown')} has no mask, skipping")
                 continue
                 
             # Use provided track ID from ByteTrack
             track_id = detection.get('track_id', -1)
             if track_id == -1:
+                print(f"   ⚠️ Detection has no track_id, skipping")
                 continue  # Skip untracked detections
             
             # Get segment centroid
             centroid_x, centroid_y = self._get_mask_centroid(detection['mask'])
             if centroid_x is None:
+                print(f"   ⚠️ Track {track_id} has no valid centroid, skipping")
                 continue
+            
+            print(f"   ✅ Track {track_id} ({detection['class']}): centroid=({centroid_x:.1f}, {centroid_y:.1f})")
             
             segment_info = {
                 'track_id': track_id,
@@ -115,6 +133,8 @@ class SAMSegmentTracker:
         # Clean up old segments
         self._cleanup_old_segments(frame_idx)
         
+        print(f"   📊 Found {len(current_crossings)} crossings in frame {frame_idx}")
+        
         return current_crossings
     
     def _get_mask_centroid(self, mask: np.ndarray) -> Tuple[Optional[int], Optional[int]]:
@@ -133,15 +153,15 @@ class SAMSegmentTracker:
         return centroid_x, centroid_y
     
     def _check_line_crossings(self, track_id: int, segment_info: Dict) -> List[Dict]:
-        """Check if segment crossed any lines using bbox centers."""
+        """Check if segment crossed any lines using mask centroids."""
         crossings = []
         
         if len(self.segment_history[track_id]) < 2:
             return crossings
         
-        # Get current and previous bbox centers
-        current_bbox = segment_info['bbox']
-        current_center_x = (current_bbox[0] + current_bbox[2]) / 2
+        # Get current mask centroid
+        current_centroid = segment_info['centroid']
+        current_center_x = current_centroid[0]
         
         history = list(self.segment_history[track_id])
         
@@ -150,56 +170,69 @@ class SAMSegmentTracker:
             if i + 1 >= len(history):
                 break
                 
-            # Get previous bbox center
+            # Get previous centroid
             prev_frame = history[i]
             curr_frame = history[i + 1]
             
-            # For current detection, use segment_info bbox
+            # For current detection, use segment_info centroid
             if i + 1 == len(history) - 1:
                 curr_center_x = current_center_x
             else:
-                # Use stored bbox if available, otherwise use centroid
-                if 'bbox' in curr_frame:
-                    curr_bbox = curr_frame['bbox']
-                    curr_center_x = (curr_bbox[0] + curr_bbox[2]) / 2
-                else:
-                    curr_center_x = curr_frame['centroid'][0]
+                curr_center_x = curr_frame['centroid'][0]
             
             # Get previous center
-            if 'bbox' in prev_frame:
-                prev_bbox = prev_frame['bbox']
-                prev_center_x = (prev_bbox[0] + prev_bbox[2]) / 2
-            else:
-                prev_center_x = prev_frame['centroid'][0]
+            prev_center_x = prev_frame['centroid'][0]
+            
+            # Debug: Print movement information
+            print(f"🔍 Track {track_id} ({segment_info['class']}): {prev_center_x:.1f} -> {curr_center_x:.1f}")
             
             # Check each line using extracted x-coordinates
             for line_idx, line_x in enumerate(self.line_x_positions):
+                print(f"   📏 Line {line_idx + 1}: x={line_x}")
                 crossing_info = self._detect_line_crossing_simple(
                     prev_center_x, curr_center_x, line_x, track_id, 
                     segment_info['class'], line_idx + 1, segment_info['frame_idx']
                 )
                 
                 if crossing_info:
+                    print(f"   ✅ CROSSING DETECTED! Line {line_idx + 1}")
                     crossings.append(crossing_info)
                     self.line_crossings.append(crossing_info)
+                else:
+                    print(f"   ❌ No crossing for line {line_idx + 1}")
         
         return crossings
     
     def _detect_line_crossing_simple(self, prev_x, curr_x, line_x, track_id, obj_class, line_id, frame_idx):
         """Improved line crossing detection using x coordinates."""
         # Add tolerance for line crossing detection - MUCH MORE RELAXED
-        tolerance = 50  # Increased from 10 to 50 pixels
+        tolerance = 200  # Increased from 100 to 200 pixels for more sensitive detection
+        
+        # Debug: Print detailed crossing analysis
+        print(f"      🔍 Crossing Analysis:")
+        print(f"         Prev X: {prev_x:.1f}")
+        print(f"         Curr X: {curr_x:.1f}")
+        print(f"         Line X: {line_x}")
+        print(f"         Tolerance: {tolerance}")
         
         # Check if crossed vertical line with tolerance
         line_crossed = False
+        crossing_type = "none"
+        
         if (prev_x < line_x < curr_x) or (curr_x < line_x < prev_x):
             line_crossed = True
+            crossing_type = "direct_cross"
         elif abs(prev_x - line_x) <= tolerance and abs(curr_x - line_x) <= tolerance:
             # Object is very close to line
             line_crossed = True
+            crossing_type = "close_to_line"
         elif abs(prev_x - line_x) <= tolerance * 2:  # Even more relaxed
             # Object is within extended tolerance
             line_crossed = True
+            crossing_type = "extended_tolerance"
+        
+        print(f"         Crossing Type: {crossing_type}")
+        print(f"         Line Crossed: {line_crossed}")
         
         if line_crossed:
             direction = "IN" if prev_x < curr_x else "OUT"
@@ -209,7 +242,7 @@ class SAMSegmentTracker:
             
             # Add confidence based on movement distance
             movement_distance = abs(curr_x - prev_x)
-            confidence = min(1.0, movement_distance / 20.0)  # More relaxed confidence calculation
+            confidence = min(1.0, movement_distance / 5.0)  # More relaxed confidence calculation
             
             crossing_info = {
                 'track_id': track_id,
@@ -224,13 +257,15 @@ class SAMSegmentTracker:
                 'curr_x': curr_x,
                 'line_x': line_x,
                 'confidence': confidence,
-                'movement_distance': movement_distance
+                'movement_distance': movement_distance,
+                'crossing_type': crossing_type
             }
             
-            # Line crossing detected - logging removed for cleaner output
+            print(f"         ✅ CROSSING CONFIRMED! Direction: {direction}")
             
             return crossing_info
         
+        print(f"         ❌ No crossing detected")
         return None
     
     def _get_track_duration(self, track_id: int, current_frame: int) -> int:

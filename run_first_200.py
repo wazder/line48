@@ -63,8 +63,14 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
     LINE_POINTS_SV = [sv.Point(x, y) for x, y in LINE_POINTS]
     LINE_IDS = ["LeftMost", "Left", "Center", "Right", "RightMost"]
     
-    # Create line zones
-    LINES = [sv.LineZone(start=p, end=sv.Point(p.x, LINE_HEIGHT)) for p in LINE_POINTS_SV]
+    # Create line zones - Fix the line zone creation
+    LINES = []
+    for i, (x, y) in enumerate(LINE_POINTS):
+        start_point = sv.Point(x, y)
+        end_point = sv.Point(x, LINE_HEIGHT)
+        line_zone = sv.LineZone(start=start_point, end=end_point)
+        LINES.append(line_zone)
+        print(f"   Line {i+1} ({LINE_IDS[i]}): ({x}, {y}) -> ({x}, {LINE_HEIGHT})")
     
     # Initialize SAM segment tracker
     sam_tracker = SAMSegmentTracker(lines=LINES, fps=video_info.fps)
@@ -108,8 +114,13 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
         sam_logic = SAMLineLogic(sam_model_type="vit_b", sam_checkpoint=sam_checkpoint)
         segmented_frame, detections = sam_logic.detect_and_segment(frame)
         
-        # Process line crossings
-        crossings = sam_tracker.update(frame_count, detections)
+        # Process line crossings - ensure detections have proper format
+        if detections:
+            # Filter detections that have masks
+            valid_detections = [det for det in detections if det.get('mask') is not None]
+            crossings = sam_tracker.update(frame_count, valid_detections)
+        else:
+            crossings = []
         
         # Annotate frame - detections is a list, not sv.Detections object
         # Skip annotation for now since detections is in list format
