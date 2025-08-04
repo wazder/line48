@@ -116,8 +116,8 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
             print(f"⚠️ End of video reached at frame {frame_count}")
             break
         
-        # Run SAM inference using pre-initialized SAMLineLogic
-        segmented_frame, detections = sam_logic.detect_and_segment(frame)
+        # Detect and segment with SAM
+        segmented_frame, detections = sam_logic.detect_and_segment(frame, frame_count)
         
         # Process line crossings - ensure detections have proper format
         if detections:

@@ -21,14 +21,14 @@ class FrameBasedTracker:
     Tracks object presence duration and classifies predictions based on tracking time.
     """
     
-    def __init__(self, fps, min_safe_time=0.5, min_uncertain_time=0.28, min_very_brief_time=0.167):
+    def __init__(self, fps, min_safe_time=0.3, min_uncertain_time=0.15, min_very_brief_time=0.08):
         """
         Initialize frame-based tracker.
         Args:
             fps: Video frame rate
-            min_safe_time: Minimum time (seconds) for safe prediction
-            min_uncertain_time: Minimum time (seconds) for uncertain prediction
-            min_very_brief_time: Minimum time (seconds) for very brief prediction
+            min_safe_time: Minimum time (seconds) for safe prediction (reduced from 0.5 to 0.3)
+            min_uncertain_time: Minimum time (seconds) for uncertain prediction (reduced from 0.28 to 0.15)
+            min_very_brief_time: Minimum time (seconds) for very brief prediction (reduced from 0.167 to 0.08)
         """
         self.fps = fps
         self.min_safe_frames = int(min_safe_time * fps)      # e.g., 27
@@ -71,15 +71,29 @@ class FrameBasedTracker:
         duration_seconds = duration_frames / self.fps
         return duration_frames, duration_seconds
     
-    def classify_prediction_confidence(self, duration_frames):
-        if duration_frames >= self.min_safe_frames:
-            return "safe"
-        elif duration_frames >= self.min_uncertain_frames:
-            return "uncertain"
-        elif duration_frames >= self.min_very_brief_frames:
-            return "very_brief"
+    def classify_prediction_confidence(self, duration_frames, class_name=None):
+        """Classify prediction confidence based on duration, with special handling for persons."""
+        # Special handling for persons - they should be counted even with shorter durations
+        if class_name == "person":
+            # More lenient thresholds for persons
+            if duration_frames >= self.min_safe_frames // 2:  # Half the normal safe time
+                return "safe"
+            elif duration_frames >= self.min_uncertain_frames // 2:  # Half the normal uncertain time
+                return "uncertain"
+            elif duration_frames >= self.min_very_brief_frames // 2:  # Half the normal very brief time
+                return "very_brief"
+            else:
+                return "discard"
         else:
-            return "discard"
+            # Standard thresholds for other objects
+            if duration_frames >= self.min_safe_frames:
+                return "safe"
+            elif duration_frames >= self.min_uncertain_frames:
+                return "uncertain"
+            elif duration_frames >= self.min_very_brief_frames:
+                return "very_brief"
+            else:
+                return "discard"
     
     def get_confidence_color(self, confidence):
         if confidence == "safe":
@@ -93,18 +107,51 @@ class FrameBasedTracker:
     
     def process_line_crossing(self, detections, current_frame, lines, line_ids, class_names):
         crossings = []
+        
+        # Special debug for persons
+        person_detections = []
+        for i in range(len(detections)):
+            if i < len(detections.class_id):
+                cls = class_names[detections.class_id[i]]
+                if cls == "person":
+                    tid = detections.tracker_id[i] if i < len(detections.tracker_id) else None
+                    person_detections.append((i, tid))
+        
+        if person_detections:
+            print(f"👥 Frame {current_frame}: Found {len(person_detections)} person(s)")
+            for idx, tid in person_detections:
+                print(f"   - Person ID: {tid}")
+        
         for line_idx, line in enumerate(lines):
             crossed_in, crossed_out = line.trigger(detections)
+            
+            # Debug: Print all detections for this frame
+            if len(detections) > 0:
+                print(f"🔍 Frame {current_frame}: {len(detections)} detections")
+                for i in range(len(detections)):
+                    if i < len(detections.class_id):
+                        cls = class_names[detections.class_id[i]]
+                        tid = detections.tracker_id[i] if i < len(detections.tracker_id) else None
+                        print(f"   - {cls} (ID: {tid})")
+            
             # IN crossings
             for i, is_in in enumerate(crossed_in):
                 if is_in:
                     tid = detections.tracker_id[i]
+                    cls = class_names[detections.class_id[i]]
+                    
+                    # Special handling for persons - always log their crossing attempts
+                    if cls == "person":
+                        print(f"🎯 PERSON CROSSING ATTEMPT: Person (ID: {tid}) attempting to cross line {line_ids[line_idx]} IN")
+                    
                     if tid is not None and tid not in self.global_in:
                         self.global_in.add(tid)
                         duration_frames, duration_seconds = self.get_presence_duration(tid, current_frame)
-                        confidence = self.classify_prediction_confidence(duration_frames)
-                        cls = class_names[detections.class_id[i]]
+                        confidence = self.classify_prediction_confidence(duration_frames, cls)
                         timestamp = str(timedelta(seconds=int(current_frame / self.fps)))
+                        
+                        # Debug: Print crossing detection
+                        print(f"✅ IN CROSSING: {cls} (ID: {tid}) crossed line {line_ids[line_idx]} - Duration: {duration_seconds:.2f}s - Confidence: {confidence}")
                         
                         # Add to crossings list for visualization
                         if len(detections.xyxy) > i:
@@ -120,7 +167,18 @@ class FrameBasedTracker:
                             })
                         
                         if confidence == "discard":
-                            self.discarded_crossings.append((tid, cls, line_ids[line_idx], "IN", current_frame, duration_frames))
+                            print(f"❌ DISCARDED: {cls} (ID: {tid}) - Duration too short ({duration_seconds:.2f}s)")
+                            # For persons, still count them even if discarded
+                            if cls == "person":
+                                print(f"🎯 SPECIAL: Counting person anyway due to importance")
+                                self.per_class_counter[cls]["very_brief"] += 1
+                                self.per_class_counter[cls]["total"] += 1
+                                self.log_rows.append([
+                                    tid, cls, line_ids[line_idx], "IN", current_frame, 
+                                    timestamp, "very_brief", f"{duration_seconds:.2f}s"
+                                ])
+                            else:
+                                self.discarded_crossings.append((tid, cls, line_ids[line_idx], "IN", current_frame, duration_frames))
                         else:
                             if confidence == "safe":
                                 self.counted_ids_in.add(tid)
@@ -134,12 +192,20 @@ class FrameBasedTracker:
             for i, is_out in enumerate(crossed_out):
                 if is_out:
                     tid = detections.tracker_id[i]
+                    cls = class_names[detections.class_id[i]]
+                    
+                    # Special handling for persons - always log their crossing attempts
+                    if cls == "person":
+                        print(f"🎯 PERSON CROSSING ATTEMPT: Person (ID: {tid}) attempting to cross line {line_ids[line_idx]} OUT")
+                    
                     if tid is not None and tid not in self.global_out:
                         self.global_out.add(tid)
                         duration_frames, duration_seconds = self.get_presence_duration(tid, current_frame)
-                        confidence = self.classify_prediction_confidence(duration_frames)
-                        cls = class_names[detections.class_id[i]]
+                        confidence = self.classify_prediction_confidence(duration_frames, cls)
                         timestamp = str(timedelta(seconds=int(current_frame / self.fps)))
+                        
+                        # Debug: Print crossing detection
+                        print(f"✅ OUT CROSSING: {cls} (ID: {tid}) crossed line {line_ids[line_idx]} - Duration: {duration_seconds:.2f}s - Confidence: {confidence}")
                         
                         # Add to crossings list for visualization
                         if len(detections.xyxy) > i:
@@ -155,7 +221,18 @@ class FrameBasedTracker:
                             })
                         
                         if confidence == "discard":
-                            self.discarded_crossings.append((tid, cls, line_ids[line_idx], "OUT", current_frame, duration_frames))
+                            print(f"❌ DISCARDED: {cls} (ID: {tid}) - Duration too short ({duration_seconds:.2f}s)")
+                            # For persons, still count them even if discarded
+                            if cls == "person":
+                                print(f"🎯 SPECIAL: Counting person anyway due to importance")
+                                self.per_class_counter[cls]["very_brief"] += 1
+                                self.per_class_counter[cls]["total"] += 1
+                                self.log_rows.append([
+                                    tid, cls, line_ids[line_idx], "OUT", current_frame, 
+                                    timestamp, "very_brief", f"{duration_seconds:.2f}s"
+                                ])
+                            else:
+                                self.discarded_crossings.append((tid, cls, line_ids[line_idx], "OUT", current_frame, duration_frames))
                         else:
                             if confidence == "safe":
                                 self.counted_ids_out.add(tid)

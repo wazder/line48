@@ -26,7 +26,7 @@ class SAMLineLogic:
     def __init__(self, 
                  sam_model_type: str = "vit_h",
                  sam_checkpoint: str = None,
-                 yolo_model: str = "yolo11n.pt",
+                 yolo_model: str = "yolo11s.pt",
                  device: str = "cuda:0" if torch.cuda.is_available() else "cpu"):
         """
         Initialize SAM + LineLogic system.
@@ -84,7 +84,7 @@ class SAMLineLogic:
             print(f"❌ Failed to load SAM model: {e}")
             raise
     
-    def detect_and_segment(self, frame: np.ndarray) -> Tuple[np.ndarray, List[Dict]]:
+    def detect_and_segment(self, frame: np.ndarray, frame_count: int = 0) -> Tuple[np.ndarray, List[Dict]]:
         """
         Detect objects with YOLO and segment with SAM.
         
@@ -95,7 +95,7 @@ class SAMLineLogic:
             Tuple of (segmented_frame, detection_results)
         """
         # YOLO detection with tracking
-        yolo_results = self.yolo_model.track(frame, verbose=False, persist=True)
+        yolo_results = self.yolo_model.detect(frame, verbose=False)
         
         if len(yolo_results) == 0:
             return frame, []
@@ -115,7 +115,7 @@ class SAMLineLogic:
             class_id = int(box.cls[0])
             confidence = float(box.conf[0])
             
-            if class_id in self.class_ids and confidence > 0.001:  # Extremely low confidence for more detections
+            if class_id in self.class_ids and confidence > 0.00001:  # Extremely low confidence for more detections
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                 class_name = self.yolo_model.names[class_id]
                 
@@ -163,6 +163,7 @@ class SAMLineLogic:
                     if mask_area < min_mask_area:
                         continue
                         
+
                     detection['mask'] = mask
                     detection['mask_score'] = float(scores[0])
                     

@@ -23,7 +23,7 @@ from frame_overlay import FrameOverlay
 # from detailed_video_processor import process_video_with_detailed_info
 # These imports will be moved to where they're needed to avoid circular imports
 
-def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kwargs):
+def run_analysis(source_video_path, use_frame_logic=True, line_config=None, ultra_sensitive=False, **kwargs):
     """
     Run analysis on a video with configurable parameters.
     
@@ -31,6 +31,7 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
         source_video_path: Path to source video
         use_frame_logic: Whether to use frame-based validation
         line_config: Line configuration (optional)
+        ultra_sensitive: Enable ultra-sensitive detection mode for maximum object detection
         **kwargs: Additional parameters (confidence, iou, imgsz, detailed_info, etc.)
     """
     
@@ -71,9 +72,21 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
     
     # Apply configurable parameters
     print("🔧 Model parameters:")
-    model_single.conf = kwargs.get('confidence', 0.25)
-    model_single.iou = kwargs.get('iou', 0.45)
-    model_single.imgsz = kwargs.get('imgsz', 1024)
+    
+    # Ultra-sensitive mode for maximum detection
+    if ultra_sensitive:
+        default_confidence = 0.08
+        default_iou = 0.25
+        default_imgsz = 1536
+        print("🔍 Ultra-sensitive detection mode enabled!")
+    else:
+        default_confidence = 0.15
+        default_iou = 0.35
+        default_imgsz = 1280
+    
+    model_single.conf = kwargs.get('confidence', default_confidence)
+    model_single.iou = kwargs.get('iou', default_iou)
+    model_single.imgsz = kwargs.get('imgsz', default_imgsz)
     
     print(f"   Confidence threshold: {model_single.conf}")
     print(f"   NMS threshold: {model_single.iou}")
@@ -108,22 +121,19 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
         })
     
     if use_frame_logic:
-        # Frame-based logic parameters
-        min_safe_time = kwargs.get('min_safe_time', 0.5)
-        min_uncertain_time = kwargs.get('min_uncertain_time', 0.28)
-        min_very_brief_time = kwargs.get('min_very_brief_time', 0.17)
+        # Initialize frame-based tracker with appropriate sensitivity
+        if ultra_sensitive:
+            # Ultra-sensitive frame logic settings
+            min_safe_time = 0.15
+            min_uncertain_time = 0.08
+            min_very_brief_time = 0.03
+            print("⏱️ Ultra-sensitive frame logic enabled!")
+        else:
+            # Standard sensitive frame logic settings
+            min_safe_time = 0.3
+            min_uncertain_time = 0.15
+            min_very_brief_time = 0.08
         
-        parameters.update({
-            'min_safe_time': min_safe_time,
-            'min_uncertain_time': min_uncertain_time,
-            'min_very_brief_time': min_very_brief_time
-        })
-        
-        print(f"   Min safe time: {min_safe_time}s")
-        print(f"   Min uncertain time: {min_uncertain_time}s")
-        print(f"   Min very brief time: {min_very_brief_time}s")
-        
-        # Initialize frame-based tracker
         tracker = FrameBasedTracker(
             fps=video_info.fps,
             min_safe_time=min_safe_time,
@@ -131,22 +141,42 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
             min_very_brief_time=min_very_brief_time
         )
         
-        # Setup lines and annotators
-        from config import LINE_IDS
+        # Add frame logic parameters to logging
+        parameters.update({
+            'min_safe_time': min_safe_time,
+            'min_uncertain_time': min_uncertain_time,
+            'min_very_brief_time': min_very_brief_time,
+            'ultra_sensitive': ultra_sensitive
+        })
         
-        # Use custom line configuration if provided, otherwise use defaults
-        if line_config:
-            line_positions = line_config['line_positions']
-            line_height = line_config['line_height']
-            LINE_POINTS = [sv.Point(x, 0) for x in line_positions]
-            LINES = [sv.LineZone(start=p, end=sv.Point(p.x, line_height)) for p in LINE_POINTS]
-        else:
-            from config import LINE_POINTS, LINE_HEIGHT
-            LINES = [sv.LineZone(start=p, end=sv.Point(p.x, LINE_HEIGHT)) for p in LINE_POINTS]
+        print(f"   Min safe time: {min_safe_time}s")
+        print(f"   Min uncertain time: {min_uncertain_time}s")
+        print(f"   Min very brief time: {min_very_brief_time}s")
+        
+        # Setup lines and annotators with more sensitive detection
+        LINE_POINTS = config.LINE_POINTS
+        LINE_IDS = config.LINE_IDS
+        LINE_HEIGHT = config.LINE_HEIGHT
+        
+        # Create lines with more sensitive triggering
+        LINES = []
+        for p in LINE_POINTS:
+            # Create line with wider trigger zone for better detection
+            line = sv.LineZone(
+                start=p, 
+                end=sv.Point(p.x, LINE_HEIGHT),
+                triggering_annotations=sv.TriggeringAnnotator(
+                    thickness=4,  # Thicker line for better visibility
+                    text_thickness=2,
+                    text_scale=1.0
+                )
+            )
+            LINES.append(line)
+        
         line_annotators = [
             sv.LineZoneAnnotator(
-                display_in_count=False,
-                display_out_count=False,
+                display_in_count=True,  # Show counts
+                display_out_count=True,  # Show counts
                 text_thickness=2,
                 text_scale=1.0
             )
@@ -181,6 +211,26 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
             
             # Process line crossings
             crossings = tracker.process_line_crossing(detections, index, LINES, LINE_IDS, COCO_NAMES)
+            
+            # Debug: Show all detections and their line crossing status
+            if len(detections) > 0:
+                print(f"\n📊 Frame {index} Summary:")
+                for i in range(len(detections)):
+                    if i < len(detections.class_id):
+                        cls = COCO_NAMES[detections.class_id[i]]
+                        tid = detections.tracker_id[i] if i < len(detections.tracker_id) else None
+                        bbox = detections.xyxy[i] if i < len(detections.xyxy) else [0, 0, 0, 0]
+                        center_x = int((bbox[0] + bbox[2]) / 2)
+                        
+                        # Check if this object is near any line
+                        line_proximity = []
+                        for line_idx, line in enumerate(LINES):
+                            line_x = line.vector[0].x  # Get line x position
+                            distance = abs(center_x - line_x)
+                            if distance < 100:  # Within 100 pixels of line
+                                line_proximity.append(f"Line{line_idx+1}({distance}px)")
+                        
+                        print(f"   {cls} (ID: {tid}) at x={center_x} - Near lines: {line_proximity}")
             
             # Annotate frame
             frame = sv.BoxAnnotator().annotate(frame, detections)
@@ -377,6 +427,8 @@ Examples:
     parser.add_argument("--max-frames", type=int, help="Maximum frames to process (default: None = all frames)")
     parser.add_argument("--detailed-info", action="store_true", 
                        help="Show detailed frame-by-frame information overlay")
+    parser.add_argument("--ultra-sensitive", action="store_true",
+                       help="Enable ultra-sensitive detection mode for maximum object detection")
     
     return parser.parse_args()
 
@@ -470,10 +522,10 @@ def interactive_setup():
     
     # Confidence
     while True:
-        conf_input = input(f"\nConfidence threshold (0.0-1.0) or press Enter for default (0.25): ").strip()
+        conf_input = input(f"\nConfidence threshold (0.0-1.0) or press Enter for default (0.15): ").strip()
         if not conf_input:
-            confidence = 0.25
-            print("✅ Using default confidence: 0.25")
+            confidence = 0.15
+            print("✅ Using default confidence: 0.15")
             break
         try:
             confidence = float(conf_input)
@@ -487,10 +539,10 @@ def interactive_setup():
     
     # IoU
     while True:
-        iou_input = input(f"IoU threshold (0.0-1.0) or press Enter for default (0.45): ").strip()
+        iou_input = input(f"IoU threshold (0.0-1.0) or press Enter for default (0.35): ").strip()
         if not iou_input:
-            iou = 0.45
-            print("✅ Using default IoU: 0.45")
+            iou = 0.35
+            print("✅ Using default IoU: 0.35")
             break
         try:
             iou = float(iou_input)
@@ -504,10 +556,10 @@ def interactive_setup():
     
     # Image size
     while True:
-        imgsz_input = input(f"Image size (pixels) or press Enter for default (1024): ").strip()
+        imgsz_input = input(f"Image size (pixels) or press Enter for default (1280): ").strip()
         if not imgsz_input:
-            imgsz = 1024
-            print("✅ Using default image size: 1024")
+            imgsz = 1280
+            print("✅ Using default image size: 1280")
             break
         try:
             imgsz = int(imgsz_input)
@@ -520,9 +572,9 @@ def interactive_setup():
             print("❌ Please enter a valid number")
     
     # Step 4: Frame Logic Parameters (only if using frame logic)
-    min_safe_time = 0.5
-    min_uncertain_time = 0.28
-    min_very_brief_time = 0.17
+    min_safe_time = 0.3
+    min_uncertain_time = 0.15
+    min_very_brief_time = 0.08
     
     if use_frame_logic:
         print("\n⏱️ Step 4: Frame Logic Parameters")
@@ -713,7 +765,8 @@ def main():
             'min_uncertain_time': args.min_uncertain_time,
             'min_very_brief_time': args.min_very_brief_time,
             'max_frames': args.max_frames,
-            'detailed_info': args.detailed_info
+            'detailed_info': args.detailed_info,
+            'ultra_sensitive': args.ultra_sensitive
         }
         line_config = None
     else:
@@ -723,9 +776,14 @@ def main():
             return
         source_video, use_frame_logic, params, line_config = result
     
-    # Run analysis
-    print("\n" + "="*50)
-    run_analysis(source_video, use_frame_logic, line_config=line_config, **params)
+    # Run analysis with parsed arguments
+    run_analysis(
+        source_video_path=source_video,
+        use_frame_logic=use_frame_logic,
+        line_config=line_config,
+        ultra_sensitive=args.ultra_sensitive,
+        **params
+    )
     
     print("\n✅ Analysis complete!")
 
