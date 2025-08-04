@@ -163,23 +163,30 @@ class FrameOverlay:
         Returns:
             Frame with detection summary added
         """
-        # Count detections by class
-        class_counts = {}
+        # Organize detections by class with track IDs
+        class_detections = {}
         for detection in detections:
             obj_class = detection.get('class', 'unknown')
-            class_counts[obj_class] = class_counts.get(obj_class, 0) + 1
+            track_id = detection.get('track_id', 'N/A')
+            if obj_class not in class_detections:
+                class_detections[obj_class] = []
+            class_detections[obj_class].append(track_id)
         
-        # Display detection summary
+        # Display detection summary with track IDs
         summary_text = "Detections:"
-        cv2.putText(frame, summary_text, (self.frame_width - 200, self.frame_height + 25), 
+        cv2.putText(frame, summary_text, (self.frame_width - 250, self.frame_height + 25), 
                    self.font, self.small_font_scale, self.colors['highlight'], 
                    self.small_font_thickness)
         
         y_offset = 50
-        for obj_class, count in class_counts.items():
+        for obj_class, track_ids in class_detections.items():
             color = self.colors.get(obj_class, self.colors['text'])
-            count_text = f"{obj_class}: {count}"
-            cv2.putText(frame, count_text, (self.frame_width - 200, self.frame_height + y_offset), 
+            # Show class count and track IDs
+            track_ids_str = ','.join([str(tid) for tid in track_ids[:5]])  # Show max 5 IDs
+            if len(track_ids) > 5:
+                track_ids_str += "..."
+            count_text = f"{obj_class}({len(track_ids)}): ID[{track_ids_str}]"
+            cv2.putText(frame, count_text, (self.frame_width - 250, self.frame_height + y_offset), 
                        self.font, self.small_font_scale, color, 
                        self.small_font_thickness)
             y_offset += 20
