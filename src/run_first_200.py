@@ -5,7 +5,7 @@ Run SAM analysis for full video
 
 # 🎬 QUICK FRAME CONFIGURATION - Change this value to process different amounts of frames
 # Set to None for entire video, or any number for specific frame count
-FRAME_LIMIT = 1000  # Examples: None (full video), 800, 1000, 2000, etc.
+FRAME_LIMIT = 2000  # Examples: None (full video), 800, 1000, 2000, etc.
 # APTAL OLMA BURDAN DEGISTIR !!!!!!!!! >*<
 
 import os
