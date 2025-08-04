@@ -230,14 +230,14 @@ class SAMSegmentTracker:
     
     def _detect_line_crossing_simple(self, prev_x, curr_x, line_x, track_id, obj_class, line_id, frame_idx):
         """Improved line crossing detection using x coordinates."""
-        # Class-specific thresholds for better detection
-        min_movement = 20  # Lower movement threshold
+        # Class-specific thresholds for better detection - very relaxed for handbag
+        min_movement = 15 if obj_class == 'handbag' else 20  # Even lower for handbag
         
         # Different proximity thresholds per object type
         proximity_thresholds = {
             'person': 5,       # Very strict for person (5 pixel tolerance)
             'backpack': 20,    # Much stricter for backpack
-            'handbag': 80,     # Very generous for handbag (increased from 20)
+            'handbag': 120,    # Extremely generous for handbag (increased from 80)
             'suitcase': 35     # More generous for suitcase
         }
         line_proximity_threshold = proximity_thresholds.get(obj_class, 50)
@@ -277,7 +277,7 @@ class SAMSegmentTracker:
             spatial_temporal_thresholds = {
                 'person': {'spatial': 150, 'temporal': 30},      # 150px, 30 frames  
                 'backpack': {'spatial': 80, 'temporal': 50},     # 80px, 50 frames
-                'handbag': {'spatial': 150, 'temporal': 15},     # Very generous spatial, very short temporal
+                'handbag': {'spatial': 200, 'temporal': 10},     # Extremely generous spatial, very short temporal
                 'suitcase': {'spatial': 100, 'temporal': 20}     # More generous spatial, shorter temporal
             }
             
@@ -306,8 +306,9 @@ class SAMSegmentTracker:
                 self.frame_crossings[frame_idx] = []
             
             for existing_class, existing_x in self.frame_crossings[frame_idx]:
+                same_frame_threshold = 100 if obj_class == 'handbag' else 50  # Looser for handbag
                 if (existing_class == obj_class and 
-                    abs(existing_x - curr_x) < 50):  # Very tight same-frame check
+                    abs(existing_x - curr_x) < same_frame_threshold):  # Looser check for handbag
                     print(f"🚫 Same frame duplicate [Frame {frame_idx}]: {obj_class} at x={curr_x} too close to existing at x={existing_x}")
                     return None
             
@@ -315,7 +316,7 @@ class SAMSegmentTracker:
             time_thresholds = {
                 'person': 8,      # Even longer gap for person
                 'backpack': 15,   # Much longer gap for backpack
-                'handbag': 5,     # Much shorter gap for handbag (reduced from 20)
+                'handbag': 3,     # Very short gap for handbag (reduced from 5)
                 'suitcase': 10    # Shorter gap for suitcase
             }
             time_threshold = time_thresholds.get(obj_class, 3)
@@ -410,52 +411,60 @@ class SAMSegmentTracker:
     def validate_and_count_crossings(self) -> Dict:
         """Validate all crossings using frame-based logic and return counts."""
         results = {
-            'safe_crossings': defaultdict(int),
-            'uncertain_crossings': defaultdict(int), 
-            'very_brief_crossings': defaultdict(int),
-            'discarded_crossings': defaultdict(int),
-            'total_crossings': defaultdict(int)
+            'safe_crossings': defaultdict(lambda: {'IN': 0, 'OUT': 0}),
+            'uncertain_crossings': defaultdict(lambda: {'IN': 0, 'OUT': 0}),
+            'very_brief_crossings': defaultdict(lambda: {'IN': 0, 'OUT': 0}),
+            'discarded_crossings': defaultdict(lambda: {'IN': 0, 'OUT': 0}),
+            'total_crossings': defaultdict(lambda: {'IN': 0, 'OUT': 0})
         }
         
         for crossing in self.line_crossings:
             obj_class = crossing['class']
+            direction = crossing['direction']  # 'IN' or 'OUT'
             duration_frames = crossing['duration_frames']
             
             # Classify based on duration
             if duration_frames >= self.min_safe_frames:
-                results['safe_crossings'][obj_class] += 1
+                results['safe_crossings'][obj_class][direction] += 1
                 category = 'safe'
             elif duration_frames >= self.min_uncertain_frames:
-                results['uncertain_crossings'][obj_class] += 1
+                results['uncertain_crossings'][obj_class][direction] += 1
                 category = 'uncertain'
             elif duration_frames >= self.min_very_brief_frames:
-                results['very_brief_crossings'][obj_class] += 1
+                results['very_brief_crossings'][obj_class][direction] += 1
                 category = 'very_brief'
             else:
-                results['discarded_crossings'][obj_class] += 1
+                results['discarded_crossings'][obj_class][direction] += 1
                 category = 'discarded'
                 self.discarded_crossings.append(crossing)
             
-            results['total_crossings'][obj_class] += 1
+            results['total_crossings'][obj_class][direction] += 1
             crossing['category'] = category
         
         return results
     
     def get_crossing_summary(self) -> str:
-        """Get formatted summary of crossings."""
+        """Get formatted summary of crossings with IN/OUT breakdown."""
         results = self.validate_and_count_crossings()
         
         summary = "📊 SAM Segment Tracking Results:\n"
         
         for obj_class in ['person', 'backpack', 'handbag', 'suitcase']:
-            safe = results['safe_crossings'][obj_class]
-            uncertain = results['uncertain_crossings'][obj_class]
-            very_brief = results['very_brief_crossings'][obj_class]
-            discarded = results['discarded_crossings'][obj_class]
-            total = safe + uncertain + very_brief
+            safe_in = results['safe_crossings'][obj_class]['IN']
+            safe_out = results['safe_crossings'][obj_class]['OUT']
+            uncertain_in = results['uncertain_crossings'][obj_class]['IN']
+            uncertain_out = results['uncertain_crossings'][obj_class]['OUT']
+            brief_in = results['very_brief_crossings'][obj_class]['IN']
+            brief_out = results['very_brief_crossings'][obj_class]['OUT']
             
-            if total > 0:
-                summary += f"{obj_class:10} → Safe: {safe}, Uncertain: {uncertain}, Very Brief: {very_brief}, Total: {total}\n"
+            total_in = safe_in + uncertain_in + brief_in
+            total_out = safe_out + uncertain_out + brief_out
+            
+            if total_in > 0 or total_out > 0:
+                summary += f"{obj_class:10} → Safe: IN:{safe_in} OUT:{safe_out}, "
+                summary += f"Uncertain: IN:{uncertain_in} OUT:{uncertain_out}, "
+                summary += f"Very Brief: IN:{brief_in} OUT:{brief_out}, "
+                summary += f"Total: IN:{total_in} OUT:{total_out}\n"
         
         summary += f"\n🗑️ Discarded crossings (too brief): {len(self.discarded_crossings)}\n"
         

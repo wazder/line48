@@ -70,7 +70,7 @@ class FrameOverlay:
         return overlay_frame
     
     def add_line_info(self, frame: np.ndarray, line_crossings: List[Dict], 
-                      current_frame: int, total_frames: int) -> np.ndarray:
+                      current_frame: int, total_frames: int, sam_tracker=None) -> np.ndarray:
         """
         Add line crossing information to overlay.
         
@@ -121,12 +121,20 @@ class FrameOverlay:
                     # Color based on class
                     color = self.colors.get(obj_class, self.colors['text'])
                     
+                    # Get category ID if available
+                    category_id = crossing.get('category_id', track_id)
+                    if sam_tracker and hasattr(sam_tracker, '_get_category_id') and track_id != 'N/A':
+                        try:
+                            category_id = sam_tracker._get_category_id(int(track_id), obj_class)
+                        except:
+                            category_id = track_id
+                    
                     # Object info text - handle confidence as string or float
                     try:
                         conf_value = float(confidence) if confidence is not None else 0.0
-                        obj_text = f"  {obj_class} ({direction}) - ID:{track_id} - Conf:{conf_value:.2f}"
+                        obj_text = f"  {obj_class} ({direction}) - ID:{category_id} - Conf:{conf_value:.2f}"
                     except (ValueError, TypeError):
-                        obj_text = f"  {obj_class} ({direction}) - ID:{track_id} - Conf:{confidence}"
+                        obj_text = f"  {obj_class} ({direction}) - ID:{category_id} - Conf:{confidence}"
                     
                     cv2.putText(frame, obj_text, (20, self.frame_height + obj_y_offset), 
                                self.font, self.small_font_scale, color, 
@@ -152,7 +160,7 @@ class FrameOverlay:
         
         return frame
     
-    def add_detection_summary(self, frame: np.ndarray, detections: List[Dict]) -> np.ndarray:
+    def add_detection_summary(self, frame: np.ndarray, detections: List[Dict], sam_tracker=None) -> np.ndarray:
         """
         Add detection summary to overlay.
         
@@ -163,11 +171,20 @@ class FrameOverlay:
         Returns:
             Frame with detection summary added
         """
-        # Organize detections by class with track IDs
+        # Organize detections by class with category IDs
         class_detections = {}
         for detection in detections:
             obj_class = detection.get('class', 'unknown')
-            category_id = detection.get('category_id', detection.get('track_id', 'N/A'))
+            track_id = detection.get('track_id', 'N/A')
+            
+            # Get category-specific ID
+            category_id = detection.get('category_id', track_id)
+            if sam_tracker and hasattr(sam_tracker, '_get_category_id') and track_id != 'N/A':
+                try:
+                    category_id = sam_tracker._get_category_id(int(track_id), obj_class)
+                except:
+                    category_id = track_id
+            
             if obj_class not in class_detections:
                 class_detections[obj_class] = []
             class_detections[obj_class].append(category_id)
@@ -190,6 +207,95 @@ class FrameOverlay:
                        self.font, self.small_font_scale, color, 
                        self.small_font_thickness)
             y_offset += 20
+        
+        return frame
+    
+    def add_category_ids_overlay(self, frame: np.ndarray, current_detections: List[Dict], 
+                                sam_tracker=None) -> np.ndarray:
+        """
+        Add category IDs overlay to the main video frame.
+        
+        Args:
+            frame: Original video frame (not the extended overlay frame)
+            current_detections: Current frame detections
+            sam_tracker: SAM tracker instance for category ID retrieval
+            
+        Returns:
+            Frame with category IDs overlaid
+        """
+        if not sam_tracker:
+            return frame
+            
+        # Left side: Currently entering objects (recent crossings)
+        recent_crossings = getattr(sam_tracker, 'recent_crossings', [])
+        if recent_crossings:
+            cv2.putText(frame, "Currently Entering:", (10, 30), 
+                       self.font, self.small_font_scale, self.colors['highlight'], 
+                       self.small_font_thickness)
+            
+            y_offset = 50
+            for i, crossing in enumerate(recent_crossings[-5:]):  # Show last 5
+                obj_class = crossing.get('class', 'unknown')
+                track_id = crossing.get('track_id', 'N/A')
+                
+                # Get category ID
+                if hasattr(sam_tracker, '_get_category_id') and track_id != 'N/A':
+                    try:
+                        category_id = sam_tracker._get_category_id(int(track_id), obj_class)
+                    except:
+                        category_id = track_id
+                else:
+                    category_id = track_id
+                
+                color = self.colors.get(obj_class, self.colors['text'])
+                text = f"{category_id} ({obj_class})"
+                cv2.putText(frame, text, (10, y_offset), 
+                           self.font, self.small_font_scale, color, 
+                           self.small_font_thickness)
+                y_offset += 20
+        
+        # Right side: All detected objects with category IDs
+        if hasattr(sam_tracker, 'category_ids') and sam_tracker.category_ids:
+            cv2.putText(frame, "All Detected:", (frame.shape[1] - 200, 30), 
+                       self.font, self.small_font_scale, self.colors['highlight'], 
+                       self.small_font_thickness)
+            
+            # Group by object class
+            class_objects = {}
+            for track_id, category_id in sam_tracker.category_ids.items():
+                # Find the class for this track_id
+                obj_class = None
+                for detection in current_detections:
+                    if detection.get('track_id') == track_id:
+                        obj_class = detection.get('class', 'unknown')
+                        break
+                
+                # If not found in current detections, try to infer from category_id
+                if not obj_class:
+                    if category_id.startswith('P'):
+                        obj_class = 'person'
+                    elif category_id.startswith('B'):
+                        obj_class = 'backpack'
+                    elif category_id.startswith('H'):
+                        obj_class = 'handbag'
+                    elif category_id.startswith('S'):
+                        obj_class = 'suitcase'
+                    else:
+                        obj_class = 'unknown'
+                
+                if obj_class not in class_objects:
+                    class_objects[obj_class] = []
+                class_objects[obj_class].append(category_id)
+            
+            y_offset = 50
+            for obj_class, category_ids in class_objects.items():
+                color = self.colors.get(obj_class, self.colors['text'])
+                ids_text = ','.join(sorted(category_ids))
+                text = f"{obj_class}: {ids_text}"
+                cv2.putText(frame, text, (frame.shape[1] - 200, y_offset), 
+                           self.font, self.small_font_scale, color, 
+                           self.small_font_thickness)
+                y_offset += 20
         
         return frame
     
@@ -244,7 +350,8 @@ class FrameOverlay:
                               total_frames: int,
                               fps: float = 30.0,
                               processing_time: float = None,
-                              timestamp: str = None) -> np.ndarray:
+                              timestamp: str = None,
+                              sam_tracker=None) -> np.ndarray:
         """
         Create complete overlay with all information.
         
@@ -265,10 +372,10 @@ class FrameOverlay:
         overlay_frame = self.create_overlay_frame(original_frame)
         
         # Add line crossing information
-        overlay_frame = self.add_line_info(overlay_frame, line_crossings, current_frame, total_frames)
+        overlay_frame = self.add_line_info(overlay_frame, line_crossings, current_frame, total_frames, sam_tracker)
         
         # Add detection summary
-        overlay_frame = self.add_detection_summary(overlay_frame, detections)
+        overlay_frame = self.add_detection_summary(overlay_frame, detections, sam_tracker)
         
         # Add performance info
         overlay_frame = self.add_performance_info(overlay_frame, fps, processing_time)
@@ -314,8 +421,10 @@ class FrameOverlay:
             
             cv2.arrowedLine(frame, arrow_start, arrow_end, arrow_color, 3)
             
-            # Add text label
-            label = f"{obj_class} {direction}"
+            # Add text label with category ID
+            track_id = crossing.get('track_id', 'N/A')
+            category_id = crossing.get('category_id', track_id)
+            label = f"{obj_class} {category_id} {direction}"
             cv2.putText(frame, label, (int(position[0]) + 15, int(position[1])), 
                        self.font, 0.5, color, 1)
         

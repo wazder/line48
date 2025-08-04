@@ -145,6 +145,9 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=800):
         # Add line crossing indicators
         frame = frame_overlay.draw_line_indicators(frame, crossings)
         
+        # Add category IDs overlay to the main video frame
+        frame = frame_overlay.add_category_ids_overlay(frame, detections, sam_tracker)
+        
         # Create overlay with information
         overlay_frame = frame_overlay.create_complete_overlay(
             original_frame=frame,
@@ -154,7 +157,8 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=800):
             total_frames=max_frames,
             fps=video_info.fps,
             processing_time=None,
-            timestamp=f"Frame {frame_count}/{max_frames}"
+            timestamp=f"Frame {frame_count}/{max_frames}",
+            sam_tracker=sam_tracker
         )
         
         # Write frame
