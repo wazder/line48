@@ -208,7 +208,7 @@ class SAMSegmentTracker:
         
         # Different proximity thresholds per object type
         proximity_thresholds = {
-            'person': 0,       # Perfect line crossing required for person
+            'person': 5,       # Very strict for person (5 pixel tolerance)
             'backpack': 20,    # Much stricter for backpack
             'handbag': 20,     # Much stricter for handbag
             'suitcase': 15     # Even stricter for suitcase
