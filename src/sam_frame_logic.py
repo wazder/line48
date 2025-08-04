@@ -75,6 +75,7 @@ class SAMSegmentTracker:
         # Track which crossings have already been detected to prevent duplicates
         self.detected_crossings = set()  # (track_id, line_id, direction)
         self.recent_crossings = []  # Store recent crossings with positions for spatial deduplication
+        self.frame_crossings = {}  # Track crossings per frame: {frame_idx: [(class, x_pos), ...]}
         
         # Statistics
         self.stats = {
@@ -202,9 +203,17 @@ class SAMSegmentTracker:
     
     def _detect_line_crossing_simple(self, prev_x, curr_x, line_x, track_id, obj_class, line_id, frame_idx):
         """Improved line crossing detection using x coordinates."""
-        # Balanced line crossing detection
-        min_movement = 30  # Reasonable movement for crossing detection
-        line_proximity_threshold = 80  # More reasonable proximity to line (increased from 30)
+        # Class-specific thresholds for better detection
+        min_movement = 20  # Lower movement threshold
+        
+        # Different proximity thresholds per object type
+        proximity_thresholds = {
+            'person': 150,     # More generous for person (they're larger)
+            'backpack': 40,    # Strict for backpack
+            'handbag': 40,     # Strict for handbag
+            'suitcase': 50     # Slightly more for suitcase
+        }
+        line_proximity_threshold = proximity_thresholds.get(obj_class, 50)
         
         # Check if movement is significant enough
         movement_distance = abs(curr_x - prev_x)
@@ -237,16 +246,25 @@ class SAMSegmentTracker:
             if crossing_key in self.detected_crossings:
                 return None
             
-            # Very strict time-based deduplication - only 1 object of same type per 3 frames
-            time_threshold = 3  # Only 3 frames allowed between same object type crossings
+            # Same-frame spatial deduplication - prevent counting same object multiple times in same frame
+            if frame_idx not in self.frame_crossings:
+                self.frame_crossings[frame_idx] = []
             
-            # Clean up old recent crossings (keep only very recent)
+            # Check if similar object already counted in this frame
+            spatial_threshold_same_frame = 100  # pixels
+            for existing_class, existing_x in self.frame_crossings[frame_idx]:
+                if (existing_class == obj_class and 
+                    abs(existing_x - curr_x) < spatial_threshold_same_frame):
+                    print(f"🚫 Same frame duplicate: {obj_class} at x={curr_x} too close to existing at x={existing_x} (frame {frame_idx})")
+                    return None
+            
+            # Time-based deduplication - only 1 object of same type per 3 frames
+            time_threshold = 3
             self.recent_crossings = [
                 c for c in self.recent_crossings 
                 if abs(c['frame_idx'] - frame_idx) <= time_threshold
             ]
             
-            # Check for same object type crossing within 2 frames
             for recent in self.recent_crossings:
                 if recent['class'] == obj_class:
                     frame_diff = abs(recent['frame_idx'] - frame_idx)
@@ -286,6 +304,9 @@ class SAMSegmentTracker:
                 'curr_x': curr_x,
                 'frame_idx': frame_idx
             })
+            
+            # Add to frame crossings to prevent same-frame duplicates
+            self.frame_crossings[frame_idx].append((obj_class, curr_x))
             
             return crossing_info
         
