@@ -50,6 +50,14 @@ class SAMLineLogic:
         self.target_classes = ["person", "backpack", "handbag", "suitcase"]
         self.class_ids = [0, 24, 26, 28]  # COCO class IDs
         
+        # Class-specific confidence thresholds - very high for precise detection
+        self.confidence_thresholds = {
+            0: 0.95,   # person - target: 3 detections
+            24: 0.85,  # backpack - target: 3 detections
+            26: 0.90,  # handbag - target: 1 detection
+            28: 0.88   # suitcase - target: 2 detections
+        }
+        
         print(f"🎯 SAM + LineLogic initialized on {device}")
     
     def _load_sam_model(self, checkpoint_path: Optional[str] = None):
@@ -117,7 +125,9 @@ class SAMLineLogic:
             class_id = int(box.cls[0])
             confidence = float(box.conf[0])
             
-            if class_id in self.class_ids and confidence > 0.00001:  # Extremely low confidence for more detections
+            # Use class-specific confidence threshold
+            required_confidence = self.confidence_thresholds.get(class_id, 0.5)
+            if class_id in self.class_ids and confidence > required_confidence:
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                 class_name = self.yolo_model.names[class_id]
                 
@@ -136,7 +146,7 @@ class SAMLineLogic:
                 valid_boxes.append([x1, y1, x2, y2])
             else:
                 if class_id in self.class_ids:
-                    print(f"   ❌ {self.yolo_model.names[class_id]} (conf: {confidence:.4f} too low)")
+                    print(f"   ❌ {self.yolo_model.names[class_id]} (conf: {confidence:.4f} < {required_confidence:.2f})")
         
         print(f"   📊 Valid detections: {len(detection_results)}")
         
