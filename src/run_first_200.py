@@ -19,11 +19,11 @@ from line_config import LINE_POINTS, LINE_HEIGHT, BASE_X, LINE_SPACING
 import supervision as sv
 from supervision import VideoInfo
 
-def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
+def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=400):
     """
-    Process first 200 frames with SAM analysis
+    Process first 400 frames with SAM analysis
     """
-    print("🎬 SAM First 200 Frames Analysis")
+    print("🎬 SAM First 400 Frames Analysis")
     print("=" * 50)
     print(f"📹 Video: {video_path}")
     print(f"🎯 Max frames: {max_frames}")
@@ -96,7 +96,7 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
     # Setup video writer
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     video_name = os.path.splitext(os.path.basename(video_path))[0]
-    output_path = os.path.join(output_dir, f"{video_name}_sam_first_200_{timestamp}.mp4")
+    output_path = os.path.join(output_dir, f"{video_name}_sam_first_400_{timestamp}.mp4")
     
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_path, fourcc, video_info.fps, (video_info.width, video_info.height + 150))
@@ -186,11 +186,11 @@ if __name__ == "__main__":
         print(f"❌ Video not found: {video_path}")
         sys.exit(1)
     
-    # Run SAM analysis for first 200 frames
+    # Run SAM analysis for first 400 frames
     output_path = run_sam_first_200_frames(video_path)
     
     if output_path:
-        print(f"\n🎉 SAM first 200 frames analysis completed successfully!")
+        print(f"\n🎉 SAM first 400 frames analysis completed successfully!")
         print(f"📺 Output saved to: {output_path}")
     else:
         print("❌ Processing failed") 
