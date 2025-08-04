@@ -15,9 +15,9 @@ class SAMSegmentTracker:
                  lines: List[sv.LineZone],
                  fps: float = 30.0,
                  line_x_positions: List[int] = None,
-                 min_safe_time: float = 0.1,    # Much more relaxed
-                 min_uncertain_time: float = 0.05, # Much more relaxed
-                 min_very_brief_time: float = 0.01): # Much more relaxed
+                 min_safe_time: float = 0.5,    # Higher threshold for safe (more strict)
+                 min_uncertain_time: float = 0.2,   # Higher threshold for uncertain 
+                 min_very_brief_time: float = 0.05): # Higher threshold for very brief
         """Initialize SAM segment tracker."""
         # Use provided line x-positions or extract from LineZone objects
         if line_x_positions is not None:
@@ -209,9 +209,9 @@ class SAMSegmentTracker:
         # Different proximity thresholds per object type
         proximity_thresholds = {
             'person': 200,     # Very generous for person
-            'backpack': 35,    # Stricter for backpack (reduced from 40)
-            'handbag': 40,     # Strict for handbag
-            'suitcase': 25     # Very strict for suitcase
+            'backpack': 20,    # Much stricter for backpack
+            'handbag': 20,     # Much stricter for handbag
+            'suitcase': 15     # Even stricter for suitcase
         }
         line_proximity_threshold = proximity_thresholds.get(obj_class, 50)
         
@@ -253,9 +253,9 @@ class SAMSegmentTracker:
             # Class-specific same-frame spatial thresholds
             spatial_thresholds_same_frame = {
                 'person': 150,     # More generous for person
-                'backpack': 70,    # Stricter for backpack (reduced from 80)
-                'handbag': 80,     # Moderate for handbag
-                'suitcase': 60     # Stricter for suitcase
+                'backpack': 40,    # Much stricter for backpack
+                'handbag': 40,     # Much stricter for handbag
+                'suitcase': 30     # Very strict for suitcase
             }
             spatial_threshold_same_frame = spatial_thresholds_same_frame.get(obj_class, 100)
             
@@ -268,9 +268,9 @@ class SAMSegmentTracker:
             # Class-specific time thresholds for different objects
             time_thresholds = {
                 'person': 2,      # Shorter gap for person
-                'backpack': 7,    # Longer gap for backpack (increased from 5)
-                'handbag': 5,     # Longer gap for handbag
-                'suitcase': 10    # Much longer gap for suitcase (to limit to 1-2)
+                'backpack': 15,   # Much longer gap for backpack
+                'handbag': 20,    # Very long gap for handbag
+                'suitcase': 25    # Extremely long gap for suitcase
             }
             time_threshold = time_thresholds.get(obj_class, 3)
             
