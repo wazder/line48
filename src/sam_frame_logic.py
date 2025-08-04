@@ -15,9 +15,9 @@ class SAMSegmentTracker:
                  lines: List[sv.LineZone],
                  fps: float = 30.0,
                  line_x_positions: List[int] = None,
-                 min_safe_time: float = 0.5,    # Higher threshold for safe (more strict)
-                 min_uncertain_time: float = 0.2,   # Higher threshold for uncertain 
-                 min_very_brief_time: float = 0.05): # Higher threshold for very brief
+                 min_safe_time: float = 0.1,    # Much more relaxed
+                 min_uncertain_time: float = 0.05, # Much more relaxed
+                 min_very_brief_time: float = 0.01): # Much more relaxed
         """Initialize SAM segment tracker."""
         # Use provided line x-positions or extract from LineZone objects
         if line_x_positions is not None:
@@ -208,7 +208,7 @@ class SAMSegmentTracker:
         
         # Different proximity thresholds per object type
         proximity_thresholds = {
-            'person': 200,     # Very generous for person
+            'person': 100,     # Stricter for person (reduced from 200)
             'backpack': 20,    # Much stricter for backpack
             'handbag': 20,     # Much stricter for handbag
             'suitcase': 15     # Even stricter for suitcase
@@ -267,7 +267,7 @@ class SAMSegmentTracker:
             
             # Class-specific time thresholds for different objects
             time_thresholds = {
-                'person': 2,      # Shorter gap for person
+                'person': 5,      # Longer gap for person (increased from 2)
                 'backpack': 15,   # Much longer gap for backpack
                 'handbag': 20,    # Very long gap for handbag
                 'suitcase': 25    # Extremely long gap for suitcase
