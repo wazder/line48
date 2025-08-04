@@ -56,10 +56,10 @@ class SAMLineLogic:
         
         # Class-specific confidence thresholds - MAJOR ADJUSTMENT for target counts
         self.confidence_thresholds = {
-            0: 0.85,   # person - raised from 0.82 to reduce from 4 to 3
-            24: 0.75,  # backpack - raised from 0.72 to reduce from 5 to 3
-            26: 0.65,  # handbag - lowered from 0.78 to enable detection (0→1)
-            28: 0.55   # suitcase - raised from 0.45 to reduce from 10 to 2
+            0: 0.8,   # person - raised from 0.82 to reduce from 4 to 3
+            24: 0.7,  # backpack - raised from 0.72 to reduce from 5 to 3
+            26: 0.7,  # handbag - lowered from 0.78 to enable detection (0→1)
+            28: 0.6   # suitcase - raised from 0.45 to reduce from 10 to 2
         }
         
         # Print detailed GPU information
