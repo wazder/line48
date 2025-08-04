@@ -15,7 +15,6 @@ env_path = os.path.join(project_root, "envs", "lov10-env310", "Lib", "site-packa
 if os.path.exists(env_path):
     sys.path.insert(0, env_path)
 
-<<<<<<< HEAD
 # Line configuration defaults
 BASE_X = 960
 LINE_SPACING = 125
@@ -28,8 +27,6 @@ LINE_POINTS = [
     (BASE_X + LINE_SPACING, 0),   # Right line
     (BASE_X + (2*LINE_SPACING), 0), # RightMost line
 ]
-=======
->>>>>>> parent of 9630a70 (cursor7)
 
 def calculate_line_positions(base_x, line_spacing, num_lines=5):
     """Calculate X positions for all lines."""
