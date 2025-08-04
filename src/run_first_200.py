@@ -142,11 +142,20 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
             valid_detections = []
             for det in detections:
                 if det.get('mask') is not None:
-                    # Add category-specific ID
+                    # Add category-specific ID using locked class if available
                     track_id = det.get('track_id', 'N/A')
                     if track_id != 'N/A':
-                        category_id = sam_tracker._get_category_id(track_id, det['class'])
+                        # Use locked class if track is already known, otherwise use detected class
+                        obj_class = det['class']
+                        if track_id in sam_tracker.id_to_class:
+                            locked_class = sam_tracker.id_to_class[track_id]
+                            if locked_class != obj_class:
+                                print(f"🔄 Using locked class: Track {track_id} detected as {obj_class} but locked as {locked_class}")
+                                obj_class = locked_class
+                        
+                        category_id = sam_tracker._get_category_id(track_id, obj_class)
                         det['category_id'] = category_id
+                        det['class'] = obj_class  # Use locked class for further processing
                     valid_detections.append(det)
             crossings = sam_tracker.update(frame_count, valid_detections)
         else:

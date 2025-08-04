@@ -155,41 +155,47 @@ class SAMSegmentTracker:
         return current_crossings
     
     def _get_category_id(self, global_track_id: int, obj_class: str) -> str:
-        """Get or create category-specific ID for tracking - LOCKED once assigned."""
+        """Get or create category-specific ID for tracking - ABSOLUTELY LOCKED once assigned."""
         
-        # If this track_id already has a locked class, use that class instead
-        if global_track_id in self.id_to_class:
-            locked_class = self.id_to_class[global_track_id]
+        # CRITICAL: If track already has an ID, return it immediately - NO CLASS CHANGES ALLOWED
+        if global_track_id in self.category_ids:
+            existing_id = self.category_ids[global_track_id]
+            locked_class = self.id_to_class.get(global_track_id, 'unknown')
+            
             if locked_class != obj_class:
-                print(f"🔒 Track {global_track_id} locked to {locked_class}, ignoring {obj_class} classification")
-                obj_class = locked_class  # Use locked class
-        
-        if global_track_id not in self.category_ids:
-            # Lock this track_id to this class PERMANENTLY
-            self.id_to_class[global_track_id] = obj_class
+                print(f"🚫 BLOCKED: Track {global_track_id} is PERMANENTLY {locked_class} (ID: {existing_id}), rejecting {obj_class}")
             
-            # Create new category-specific ID
+            return existing_id  # Always return existing ID, never change
+        
+        # FIRST TIME: Create and permanently lock this track_id
+        print(f"🔐 FIRST DETECTION: Track {global_track_id} being locked as {obj_class}")
+        
+        # Lock this track_id to this class PERMANENTLY - NEVER CHANGE
+        self.id_to_class[global_track_id] = obj_class
+        
+        # Create new category-specific ID
+        self.category_counters[obj_class] += 1
+        category_prefix = {
+            'person': 'P',
+            'backpack': 'B', 
+            'handbag': 'H',
+            'suitcase': 'S'
+        }
+        prefix = category_prefix.get(obj_class, 'X')
+        category_id = f"{prefix}{self.category_counters[obj_class]}"
+        
+        # Ensure this category_id is unique
+        while category_id in self.assigned_category_ids:
             self.category_counters[obj_class] += 1
-            category_prefix = {
-                'person': 'P',
-                'backpack': 'B', 
-                'handbag': 'H',
-                'suitcase': 'S'
-            }
-            prefix = category_prefix.get(obj_class, 'X')
             category_id = f"{prefix}{self.category_counters[obj_class]}"
-            
-            # Ensure this category_id is unique
-            while category_id in self.assigned_category_ids:
-                self.category_counters[obj_class] += 1
-                category_id = f"{prefix}{self.category_counters[obj_class]}"
-            
-            self.category_ids[global_track_id] = category_id
-            self.assigned_category_ids.add(category_id)
-            
-            print(f"🆔 NEW & LOCKED: Track {global_track_id} ({obj_class}) → {category_id}")
         
-        return self.category_ids[global_track_id]
+        # PERMANENT ASSIGNMENT - NEVER CHANGE
+        self.category_ids[global_track_id] = category_id
+        self.assigned_category_ids.add(category_id)
+        
+        print(f"🆔 PERMANENTLY ASSIGNED: Track {global_track_id} ({obj_class}) → {category_id}")
+        
+        return category_id
     
     def _get_mask_centroid(self, mask: np.ndarray) -> Tuple[Optional[int], Optional[int]]:
         """Get centroid of segmentation mask."""
