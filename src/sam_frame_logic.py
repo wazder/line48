@@ -208,7 +208,7 @@ class SAMSegmentTracker:
         
         # Different proximity thresholds per object type
         proximity_thresholds = {
-            'person': 60,      # Even stricter for person (reduced from 100)
+            'person': 30,      # Very strict for person (reduced from 60)
             'backpack': 20,    # Much stricter for backpack
             'handbag': 20,     # Much stricter for handbag
             'suitcase': 15     # Even stricter for suitcase
@@ -262,7 +262,7 @@ class SAMSegmentTracker:
             for existing_class, existing_x in self.frame_crossings[frame_idx]:
                 if (existing_class == obj_class and 
                     abs(existing_x - curr_x) < spatial_threshold_same_frame):
-                    print(f"🚫 Same frame duplicate: {obj_class} at x={curr_x} too close to existing at x={existing_x} (frame {frame_idx})")
+                    print(f"🚫 Same frame duplicate [Frame {frame_idx}]: {obj_class} at x={curr_x} too close to existing at x={existing_x}")
                     return None
             
             # Class-specific time thresholds for different objects
@@ -282,7 +282,7 @@ class SAMSegmentTracker:
             for recent in self.recent_crossings:
                 if recent['class'] == obj_class:
                     frame_diff = abs(recent['frame_idx'] - frame_idx)
-                    print(f"🚫 Too frequent: {obj_class} crossing blocked (last crossing {frame_diff} frames ago, need {time_threshold}+ frames gap)")
+                    print(f"🚫 Too frequent [Frame {frame_idx}]: {obj_class} crossing blocked (last crossing {frame_diff} frames ago, need {time_threshold}+ frames gap)")
                     return None
             
             # Get track duration for validation
@@ -324,7 +324,7 @@ class SAMSegmentTracker:
             
             # Print valid crossing only when it's actually counted
             closest_distance = min(abs(prev_x - line_x), abs(curr_x - line_x))
-            print(f"✅ COUNTED: {obj_class} crossed line {line_id} at {closest_distance}px distance")
+            print(f"✅ COUNTED [Frame {frame_idx}]: {obj_class} crossed line {line_id} at {closest_distance}px distance")
             
             return crossing_info
         
