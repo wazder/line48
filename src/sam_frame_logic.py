@@ -222,9 +222,18 @@ class SAMSegmentTracker:
         if line_crossed:
             direction = "IN" if prev_x < curr_x else "OUT"
             
-            # Check if this crossing has already been detected
+            # Check if this crossing has already been detected (stricter duplicate prevention)
             crossing_key = (track_id, line_id, direction)
             if crossing_key in self.detected_crossings:
+                return None
+            
+            # Additional check: prevent multiple crossings of same object type on same line within short time
+            recent_similar_crossings = [
+                c for c in self.line_crossings[-20:]  # Check last 20 crossings
+                if c['class'] == obj_class and c['line_id'] == line_id and 
+                abs(c['frame_idx'] - frame_idx) < 30  # Within 30 frames
+            ]
+            if len(recent_similar_crossings) >= 1:  # Only allow 1 crossing per object type per line
                 return None
             
             # Get track duration for validation
