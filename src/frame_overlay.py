@@ -33,7 +33,7 @@ class FrameOverlay:
             'success': (0, 255, 0),          # Green
             'warning': (0, 165, 255),        # Orange
             'error': (0, 0, 255),            # Red
-            'person': (255, 0, 0),           # Blue
+            'person': (255, 150, 100),       # Light blue (BGR format)
             'backpack': (0, 255, 0),         # Green
             'handbag': (255, 0, 255),        # Magenta
             'suitcase': (0, 255, 255)        # Yellow
@@ -167,10 +167,10 @@ class FrameOverlay:
         class_detections = {}
         for detection in detections:
             obj_class = detection.get('class', 'unknown')
-            track_id = detection.get('track_id', 'N/A')
+            category_id = detection.get('category_id', detection.get('track_id', 'N/A'))
             if obj_class not in class_detections:
                 class_detections[obj_class] = []
-            class_detections[obj_class].append(track_id)
+            class_detections[obj_class].append(category_id)
         
         # Display detection summary with track IDs
         summary_text = "Detections:"

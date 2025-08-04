@@ -120,8 +120,16 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=800):
         
         # Process line crossings - ensure detections have proper format
         if detections:
-            # Filter detections that have masks
-            valid_detections = [det for det in detections if det.get('mask') is not None]
+            # Filter detections that have masks and add category IDs
+            valid_detections = []
+            for det in detections:
+                if det.get('mask') is not None:
+                    # Add category-specific ID
+                    track_id = det.get('track_id', 'N/A')
+                    if track_id != 'N/A':
+                        category_id = sam_tracker._get_category_id(track_id, det['class'])
+                        det['category_id'] = category_id
+                    valid_detections.append(det)
             crossings = sam_tracker.update(frame_count, valid_detections)
         else:
             crossings = []

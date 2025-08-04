@@ -50,11 +50,11 @@ class SAMLineLogic:
         self.target_classes = ["person", "backpack", "handbag", "suitcase"]
         self.class_ids = [0, 24, 26, 28]  # COCO class IDs
         
-        # Class-specific confidence thresholds - higher suitcase confidence
+        # Class-specific confidence thresholds - higher handbag confidence
         self.confidence_thresholds = {
             0: 0.80,   # person - set to 0.8
             24: 0.70,  # backpack - target: 3 
-            26: 0.40,  # handbag - target: 1
+            26: 0.75,  # handbag - increased from 0.40 for better precision
             28: 0.85   # suitcase - increased from 0.70 for better precision
         }
         
@@ -193,9 +193,10 @@ class SAMLineLogic:
                     x1, y1, x2, y2 = [int(coord) for coord in bbox]
                     cv2.rectangle(segmented_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     
-                    # Add label with track ID
+                    # Add label with track ID  
                     track_id = detection.get('track_id', 'N/A')
-                    label = f"{detection['class']} ID:{track_id} ({detection['confidence']:.2f})"
+                    category_id = detection.get('category_id', track_id)  # Use category ID if available
+                    label = f"{detection['class']} ID:{category_id} ({detection['confidence']:.2f})"
                     cv2.putText(segmented_frame, label, (x1, y1-10), 
                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 

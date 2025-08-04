@@ -78,6 +78,15 @@ class SAMSegmentTracker:
         self.frame_crossings = {}  # Track crossings per frame: {frame_idx: [(class, x_pos), ...]}
         self.spatial_temporal_history = []  # Track all crossings with spatial-temporal info
         
+        # Category-specific ID mapping
+        self.category_ids = {}  # Maps global track_id to category-specific ID
+        self.category_counters = {  # Counters for each category
+            'person': 0,
+            'backpack': 0, 
+            'handbag': 0,
+            'suitcase': 0
+        }
+        
         # Statistics
         self.stats = {
             'safe_crossings': defaultdict(int),
@@ -141,6 +150,23 @@ class SAMSegmentTracker:
         self._cleanup_old_segments(frame_idx)
         
         return current_crossings
+    
+    def _get_category_id(self, global_track_id: int, obj_class: str) -> str:
+        """Get or create category-specific ID for tracking."""
+        if global_track_id not in self.category_ids:
+            # Create new category-specific ID
+            self.category_counters[obj_class] += 1
+            category_prefix = {
+                'person': 'P',
+                'backpack': 'B', 
+                'handbag': 'H',
+                'suitcase': 'S'
+            }
+            prefix = category_prefix.get(obj_class, 'X')
+            category_id = f"{prefix}{self.category_counters[obj_class]}"
+            self.category_ids[global_track_id] = category_id
+        
+        return self.category_ids[global_track_id]
     
     def _get_mask_centroid(self, mask: np.ndarray) -> Tuple[Optional[int], Optional[int]]:
         """Get centroid of segmentation mask."""
@@ -211,8 +237,8 @@ class SAMSegmentTracker:
         proximity_thresholds = {
             'person': 5,       # Very strict for person (5 pixel tolerance)
             'backpack': 20,    # Much stricter for backpack
-            'handbag': 20,     # Much stricter for handbag
-            'suitcase': 35     # More generous for suitcase (increased from 15)
+            'handbag': 80,     # Very generous for handbag (increased from 20)
+            'suitcase': 35     # More generous for suitcase
         }
         line_proximity_threshold = proximity_thresholds.get(obj_class, 50)
         
@@ -251,7 +277,7 @@ class SAMSegmentTracker:
             spatial_temporal_thresholds = {
                 'person': {'spatial': 150, 'temporal': 30},      # 150px, 30 frames  
                 'backpack': {'spatial': 80, 'temporal': 50},     # 80px, 50 frames
-                'handbag': {'spatial': 80, 'temporal': 60},      # 80px, 60 frames
+                'handbag': {'spatial': 150, 'temporal': 15},     # Very generous spatial, very short temporal
                 'suitcase': {'spatial': 100, 'temporal': 20}     # More generous spatial, shorter temporal
             }
             
@@ -289,8 +315,8 @@ class SAMSegmentTracker:
             time_thresholds = {
                 'person': 8,      # Even longer gap for person
                 'backpack': 15,   # Much longer gap for backpack
-                'handbag': 20,    # Very long gap for handbag
-                'suitcase': 10    # Shorter gap for suitcase (reduced from 25)
+                'handbag': 5,     # Much shorter gap for handbag (reduced from 20)
+                'suitcase': 10    # Shorter gap for suitcase
             }
             time_threshold = time_thresholds.get(obj_class, 3)
             
