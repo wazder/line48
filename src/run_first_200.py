@@ -21,7 +21,8 @@ import torch
 from sam_utils import download_sam_model, load_sam_model
 from sam_frame_logic import SAMSegmentTracker
 from frame_overlay import FrameOverlay
-from line_config import LINE_POINTS, LINE_HEIGHT, BASE_X, LINE_SPACING, LINE_END_Y
+from line_config import LINE_POINTS, LINE_HEIGHT, BASE_X, LINE_SPACING
+from config import LINE_END_Y
 import supervision as sv
 from supervision import VideoInfo
 
