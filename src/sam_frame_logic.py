@@ -157,8 +157,8 @@ class SAMSegmentTracker:
                 prev_center_x = prev_frame['centroid'][0]
             
             # Check each line using actual line points
-            for line_idx, line_point in enumerate(self.lines):
-                line_x = line_point.x
+            for line_idx, line_zone in enumerate(self.lines):
+                line_x = line_zone.start.x  # Use start point of LineZone
                 crossing_info = self._detect_line_crossing_simple(
                     prev_center_x, curr_center_x, line_x, track_id, 
                     segment_info['class'], line_idx + 1, segment_info['frame_idx']
