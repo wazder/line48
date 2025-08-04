@@ -228,22 +228,20 @@ class SAMSegmentTracker:
             if crossing_key in self.detected_crossings:
                 return None
             
-            # Spatial deduplication - check if similar crossing already exists nearby
-            spatial_threshold = 100  # pixels
-            time_threshold = 60      # frames
+            # Very strict time-based deduplication - only 1 object of same type per 2 frames
+            time_threshold = 2  # Only 2 frames allowed between same object type crossings
             
-            # Clean up old recent crossings
+            # Clean up old recent crossings (keep only very recent)
             self.recent_crossings = [
                 c for c in self.recent_crossings 
                 if abs(c['frame_idx'] - frame_idx) <= time_threshold
             ]
             
-            # Check for spatially similar crossings
+            # Check for same object type crossing within 2 frames
             for recent in self.recent_crossings:
-                if (recent['class'] == obj_class and 
-                    recent['line_id'] == line_id and
-                    abs(recent['curr_x'] - curr_x) < spatial_threshold):
-                    print(f"🚫 Duplicate: {obj_class} at x={curr_x} too close to previous at x={recent['curr_x']}")
+                if recent['class'] == obj_class:
+                    frame_diff = abs(recent['frame_idx'] - frame_idx)
+                    print(f"🚫 Too frequent: {obj_class} crossing blocked (last crossing {frame_diff} frames ago)")
                     return None
             
             # Get track duration for validation
