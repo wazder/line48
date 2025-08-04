@@ -44,7 +44,8 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
     
     print(f"\n📍 Line Positions:")
     line_names = ["LeftMost", "Left", "Center", "Right", "RightMost"]
-    for i, (x, y) in enumerate(LINE_POINTS):
+    for i, point in enumerate(LINE_POINTS):
+        x, y = point.x, point.y
         print(f"   {line_names[i]}: ({x}, {y}) -> ({x}, {LINE_HEIGHT})")
     
     # Load SAM model
@@ -58,21 +59,20 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
     video_info = VideoInfo.from_video_path(video_path)
     print(f"📊 Video info: {video_info.width}x{video_info.height}, {video_info.fps} FPS")
     
-    # Convert line positions to sv.Point objects
-    LINE_POINTS_SV = [sv.Point(x, y) for x, y in LINE_POINTS]
+    # LINE_POINTS are already sv.Point objects
     LINE_IDS = ["LeftMost", "Left", "Center", "Right", "RightMost"]
     
-    # Create line zones - Fix the line zone creation
+    # Create line zones
     LINES = []
-    for i, (x, y) in enumerate(LINE_POINTS):
-        start_point = sv.Point(x, y)
-        end_point = sv.Point(x, LINE_HEIGHT)
+    for i, point in enumerate(LINE_POINTS):
+        start_point = sv.Point(point.x, point.y)
+        end_point = sv.Point(point.x, LINE_HEIGHT)
         line_zone = sv.LineZone(start=start_point, end=end_point)
         LINES.append(line_zone)
-        print(f"   Line {i+1} ({LINE_IDS[i]}): ({x}, {y}) -> ({x}, {LINE_HEIGHT})")
+        print(f"   Line {i+1} ({LINE_IDS[i]}): ({point.x}, {point.y}) -> ({point.x}, {LINE_HEIGHT})")
     
     # Extract x-positions for SAM tracker
-    LINE_X_POSITIONS = [x for x, y in LINE_POINTS]
+    LINE_X_POSITIONS = [point.x for point in LINE_POINTS]
     
     # Initialize SAM segment tracker with explicit line positions
     sam_tracker = SAMSegmentTracker(lines=LINES, fps=video_info.fps, line_x_positions=LINE_X_POSITIONS)
@@ -180,7 +180,7 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
 
 if __name__ == "__main__":
     # Use default video path
-    video_path = "videos/short_video.mp4"
+    video_path = "../videos/short_video.mp4"
     
     if not os.path.exists(video_path):
         print(f"❌ Video not found: {video_path}")
