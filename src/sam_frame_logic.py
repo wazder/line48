@@ -228,8 +228,8 @@ class SAMSegmentTracker:
             if crossing_key in self.detected_crossings:
                 return None
             
-            # Very strict time-based deduplication - only 1 object of same type per 2 frames
-            time_threshold = 2  # Only 2 frames allowed between same object type crossings
+            # Very strict time-based deduplication - only 1 object of same type per 3 frames
+            time_threshold = 3  # Only 3 frames allowed between same object type crossings
             
             # Clean up old recent crossings (keep only very recent)
             self.recent_crossings = [
@@ -241,7 +241,7 @@ class SAMSegmentTracker:
             for recent in self.recent_crossings:
                 if recent['class'] == obj_class:
                     frame_diff = abs(recent['frame_idx'] - frame_idx)
-                    print(f"🚫 Too frequent: {obj_class} crossing blocked (last crossing {frame_diff} frames ago)")
+                    print(f"🚫 Too frequent: {obj_class} crossing blocked (last crossing {frame_diff} frames ago, need 3+ frames gap)")
                     return None
             
             # Get track duration for validation
