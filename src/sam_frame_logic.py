@@ -259,21 +259,21 @@ class SAMSegmentTracker:
     
     def _detect_line_crossing_simple(self, prev_x, curr_x, line_x, track_id, obj_class, line_id, frame_idx):
         """Improved line crossing detection using x coordinates."""
-        # Class-specific thresholds for better detection - fine-tuned for exact targets
+        # Class-specific thresholds for better detection - major adjustment
         movement_thresholds = {
-            'person': 20,      # Higher to reduce from 4 to 3
-            'backpack': 25,    # Much higher to reduce from 8 to 3
-            'handbag': 15,     # Keep same (current 1, target 1) ✅
-            'suitcase': 16     # Lower to increase from 0 to 2
+            'person': 25,      # Much higher to reduce from 10 to 3
+            'backpack': 15,    # Lower to enable detection (0→3)
+            'handbag': 22,     # Higher to reduce from 8 to 1
+            'suitcase': 16     # Lower to enable detection (0→2)
         }
         min_movement = movement_thresholds.get(obj_class, 20)
         
-        # Different proximity thresholds per object type - fine-tuned for exact targets
+        # Different proximity thresholds per object type - major adjustment
         proximity_thresholds = {
-            'person': 18,      # Stricter to reduce from 4 to 3
-            'backpack': 20,    # Stricter to reduce from 8 to 3
-            'handbag': 120,    # Keep same (current 1, target 1) ✅
-            'suitcase': 90     # More generous to increase from 0 to 2
+            'person': 15,      # Much stricter to reduce from 10 to 3
+            'backpack': 60,    # More generous to enable detection (0→3)
+            'handbag': 80,     # Stricter to reduce from 8 to 1
+            'suitcase': 100    # Very generous to enable detection (0→2)
         }
         line_proximity_threshold = proximity_thresholds.get(obj_class, 50)
         
@@ -336,12 +336,12 @@ class SAMSegmentTracker:
             if crossing_key in self.detected_crossings:
                 return None
             
-            # Enhanced spatial-temporal duplicate prevention - fine-tuned for exact targets
+            # Enhanced spatial-temporal duplicate prevention - major adjustment
             spatial_temporal_thresholds = {
-                'person': {'spatial': 100, 'temporal': 30},      # Stricter to reduce from 4 to 3
-                'backpack': {'spatial': 60, 'temporal': 40},     # Much stricter to reduce from 8 to 3
-                'handbag': {'spatial': 180, 'temporal': 10},     # Keep same (current 1, target 1) ✅
-                'suitcase': {'spatial': 140, 'temporal': 12}     # More generous to increase from 0 to 2
+                'person': {'spatial': 80, 'temporal': 40},       # Much stricter to reduce from 10 to 3
+                'backpack': {'spatial': 120, 'temporal': 20},    # More generous to enable detection (0→3)
+                'handbag': {'spatial': 100, 'temporal': 25},     # Stricter to reduce from 8 to 1
+                'suitcase': {'spatial': 150, 'temporal': 15}     # Very generous to enable detection (0→2)
             }
             
             thresholds = spatial_temporal_thresholds.get(obj_class, {'spatial': 100, 'temporal': 30})
@@ -369,12 +369,12 @@ class SAMSegmentTracker:
                 self.frame_crossings[frame_idx] = []
             
             for existing_class, existing_x in self.frame_crossings[frame_idx]:
-                # Same-frame thresholds fine-tuned for exact targets
+                # Same-frame thresholds major adjustment
                 same_frame_thresholds = {
-                    'person': 45,      # Stricter to reduce from 4 to 3
-                    'backpack': 30,    # Much stricter to reduce from 8 to 3
-                    'handbag': 90,     # Keep same (current 1, target 1) ✅
-                    'suitcase': 70     # More lenient to increase from 0 to 2
+                    'person': 35,      # Much stricter to reduce from 10 to 3
+                    'backpack': 80,    # More lenient to enable detection (0→3)
+                    'handbag': 60,     # Stricter to reduce from 8 to 1
+                    'suitcase': 90     # Very lenient to enable detection (0→2)
                 }
                 same_frame_threshold = same_frame_thresholds.get(obj_class, 50)
                 if (existing_class == obj_class and 
@@ -382,12 +382,12 @@ class SAMSegmentTracker:
                     print(f"🚫 Same frame duplicate [Frame {frame_idx}]: {obj_class} at x={curr_x} too close to existing at x={existing_x}")
                     return None
             
-            # Class-specific time thresholds for different objects - fine-tuned for exact targets
+            # Class-specific time thresholds for different objects - major adjustment
             time_thresholds = {
-                'person': 8,      # Longer gap to reduce from 4 to 3
-                'backpack': 12,   # Much longer gap to reduce from 8 to 3
-                'handbag': 4,     # Keep same (current 1, target 1) ✅
-                'suitcase': 5     # Shorter gap to increase from 0 to 2
+                'person': 15,     # Much longer gap to reduce from 10 to 3
+                'backpack': 6,    # Shorter gap to enable detection (0→3)
+                'handbag': 12,    # Longer gap to reduce from 8 to 1
+                'suitcase': 5     # Short gap to enable detection (0→2)
             }
             time_threshold = time_thresholds.get(obj_class, 3)
             
