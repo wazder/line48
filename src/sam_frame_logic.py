@@ -261,8 +261,8 @@ class SAMSegmentTracker:
         """Improved line crossing detection using x coordinates."""
         # Class-specific thresholds for better detection - ADJUSTED for 7,8,10,0 → 3,3,2,1
         movement_thresholds = {
-            'person': 30,      # Raised from 25 to reduce from 7 to 3
-            'backpack': 20,    # Raised from 15 to reduce from 8 to 3
+            'person': 25,      # Lowered from 30 to increase from 1 to 3
+            'backpack': 28,    # Raised from 25 to reduce from 5 to 3
             'handbag': 15,     # Lowered from 22 to enable detection (0→1)
             'suitcase': 20     # Raised from 16 to reduce from 10 to 2
         }
@@ -270,8 +270,8 @@ class SAMSegmentTracker:
         
         # Different proximity thresholds per object type - ADJUSTED for 7,8,10,0 → 3,3,2,1
         proximity_thresholds = {
-            'person': 12,      # Stricter from 15 to reduce from 7 to 3
-            'backpack': 50,    # Stricter from 60 to reduce from 8 to 3
+            'person': 18,      # More lenient from 12 to increase from 1 to 3
+            'backpack': 35,    # Stricter from 40 to reduce from 5 to 3
             'handbag': 120,    # More generous from 80 to enable detection (0→1)
             'suitcase': 80     # Stricter from 100 to reduce from 10 to 2
         }
@@ -338,8 +338,8 @@ class SAMSegmentTracker:
             
             # Enhanced spatial-temporal duplicate prevention - ADJUSTED for 7,8,10,0 → 3,3,2,1
             spatial_temporal_thresholds = {
-                'person': {'spatial': 70, 'temporal': 50},       # Stricter temporal to reduce from 7 to 3
-                'backpack': {'spatial': 100, 'temporal': 25},    # Stricter spatial to reduce from 8 to 3
+                'person': {'spatial': 80, 'temporal': 40},       # More lenient to increase from 1 to 3
+                'backpack': {'spatial': 85, 'temporal': 35},     # More restrictive to reduce from 5 to 3
                 'handbag': {'spatial': 140, 'temporal': 15},     # More generous to enable detection (0→1)
                 'suitcase': {'spatial': 120, 'temporal': 20}     # Stricter spatial to reduce from 10 to 2
             }
@@ -384,8 +384,8 @@ class SAMSegmentTracker:
             
             # Class-specific time thresholds for different objects - ADJUSTED for 7,8,10,0 → 3,3,2,1
             time_thresholds = {
-                'person': 20,     # Longer gap from 15 to reduce from 7 to 3
-                'backpack': 8,    # Longer gap from 6 to reduce from 8 to 3
+                'person': 15,     # Shorter gap from 20 to increase from 1 to 3
+                'backpack': 15,   # Longer gap from 12 to reduce from 5 to 3
                 'handbag': 5,     # Shorter gap from 12 to enable detection (0→1)
                 'suitcase': 7     # Longer gap from 5 to reduce from 10 to 2
             }
