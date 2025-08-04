@@ -208,10 +208,10 @@ class SAMSegmentTracker:
         
         # Different proximity thresholds per object type
         proximity_thresholds = {
-            'person': 150,     # More generous for person (they're larger)
-            'backpack': 40,    # Strict for backpack
+            'person': 200,     # Very generous for person
+            'backpack': 35,    # Stricter for backpack (reduced from 40)
             'handbag': 40,     # Strict for handbag
-            'suitcase': 50     # Slightly more for suitcase
+            'suitcase': 25     # Very strict for suitcase
         }
         line_proximity_threshold = proximity_thresholds.get(obj_class, 50)
         
@@ -250,16 +250,30 @@ class SAMSegmentTracker:
             if frame_idx not in self.frame_crossings:
                 self.frame_crossings[frame_idx] = []
             
-            # Check if similar object already counted in this frame
-            spatial_threshold_same_frame = 100  # pixels
+            # Class-specific same-frame spatial thresholds
+            spatial_thresholds_same_frame = {
+                'person': 150,     # More generous for person
+                'backpack': 70,    # Stricter for backpack (reduced from 80)
+                'handbag': 80,     # Moderate for handbag
+                'suitcase': 60     # Stricter for suitcase
+            }
+            spatial_threshold_same_frame = spatial_thresholds_same_frame.get(obj_class, 100)
+            
             for existing_class, existing_x in self.frame_crossings[frame_idx]:
                 if (existing_class == obj_class and 
                     abs(existing_x - curr_x) < spatial_threshold_same_frame):
                     print(f"🚫 Same frame duplicate: {obj_class} at x={curr_x} too close to existing at x={existing_x} (frame {frame_idx})")
                     return None
             
-            # Time-based deduplication - only 1 object of same type per 3 frames
-            time_threshold = 3
+            # Class-specific time thresholds for different objects
+            time_thresholds = {
+                'person': 2,      # Shorter gap for person
+                'backpack': 7,    # Longer gap for backpack (increased from 5)
+                'handbag': 5,     # Longer gap for handbag
+                'suitcase': 10    # Much longer gap for suitcase (to limit to 1-2)
+            }
+            time_threshold = time_thresholds.get(obj_class, 3)
+            
             self.recent_crossings = [
                 c for c in self.recent_crossings 
                 if abs(c['frame_idx'] - frame_idx) <= time_threshold
@@ -268,7 +282,7 @@ class SAMSegmentTracker:
             for recent in self.recent_crossings:
                 if recent['class'] == obj_class:
                     frame_diff = abs(recent['frame_idx'] - frame_idx)
-                    print(f"🚫 Too frequent: {obj_class} crossing blocked (last crossing {frame_diff} frames ago, need 3+ frames gap)")
+                    print(f"🚫 Too frequent: {obj_class} crossing blocked (last crossing {frame_diff} frames ago, need {time_threshold}+ frames gap)")
                     return None
             
             # Get track duration for validation
