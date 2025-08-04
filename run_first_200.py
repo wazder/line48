@@ -111,9 +111,9 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
         # Process line crossings
         crossings = sam_tracker.update(frame_count, detections)
         
-        # Annotate frame
-        frame = sv.BoxAnnotator().annotate(segmented_frame, detections)
-        frame = sv.LabelAnnotator().annotate(frame, detections)
+        # Annotate frame - detections is a list, not sv.Detections object
+        # Skip annotation for now since detections is in list format
+        frame = segmented_frame
         
         # Annotate lines
         for line, line_annotator in zip(LINES, line_annotators):
