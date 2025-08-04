@@ -50,12 +50,12 @@ class SAMLineLogic:
         self.target_classes = ["person", "backpack", "handbag", "suitcase"]
         self.class_ids = [0, 24, 26, 28]  # COCO class IDs
         
-        # Class-specific confidence thresholds - very high for precise detection
+        # Class-specific confidence thresholds - adjusted for target counts
         self.confidence_thresholds = {
-            0: 0.95,   # person - target: 3 detections
-            24: 0.85,  # backpack - target: 3 detections
-            26: 0.90,  # handbag - target: 1 detection
-            28: 0.88   # suitcase - target: 2 detections
+            0: 0.75,   # person - target: 3 detections
+            24: 0.65,  # backpack - target: 3 detections
+            26: 0.70,  # handbag - target: 1 detection
+            28: 0.68   # suitcase - target: 2 detections
         }
         
         print(f"🎯 SAM + LineLogic initialized on {device}")
@@ -119,7 +119,17 @@ class SAMLineLogic:
         detection_results = []
         valid_boxes = []
         
-        print(f"🔍 Frame detections: {len(boxes)} total boxes")
+        # Only show debug info when there are detections
+        target_detections = 0
+        for box in boxes:
+            class_id = int(box.cls[0])
+            confidence = float(box.conf[0])
+            required_confidence = self.confidence_thresholds.get(class_id, 0.5)
+            if class_id in self.class_ids and confidence > required_confidence:
+                target_detections += 1
+        
+        if target_detections > 0:
+            print(f"🔍 Frame {frame_count}: {target_detections} valid detections found")
         
         for i, box in enumerate(boxes):
             class_id = int(box.cls[0])
@@ -144,9 +154,6 @@ class SAMLineLogic:
                     'track_id': track_id  # Add track_id for line crossing
                 })
                 valid_boxes.append([x1, y1, x2, y2])
-            else:
-                if class_id in self.class_ids:
-                    print(f"   ❌ {self.yolo_model.names[class_id]} (conf: {confidence:.4f} < {required_confidence:.2f})")
         
         print(f"   📊 Valid detections: {len(detection_results)}")
         
