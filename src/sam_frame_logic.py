@@ -14,34 +14,57 @@ class SAMSegmentTracker:
     def __init__(self, 
                  lines: List[sv.LineZone],
                  fps: float = 30.0,
+                 line_x_positions: List[int] = None,
                  min_safe_time: float = 0.1,    # Much more relaxed
                  min_uncertain_time: float = 0.05, # Much more relaxed
                  min_very_brief_time: float = 0.01): # Much more relaxed
         """Initialize SAM segment tracker."""
-        # Extract x-coordinates from LineZone objects
-        self.line_x_positions = []
-        print(f"🔧 Initializing SAM Tracker with {len(lines)} lines:")
-        
-        for i, line_zone in enumerate(lines):
-            # LineZone objects have start and end points, extract x-coordinate from start
-            if hasattr(line_zone, 'start') and hasattr(line_zone.start, 'x'):
-                x_pos = line_zone.start.x
-                self.line_x_positions.append(x_pos)
-                print(f"   Line {i+1}: x={x_pos} (from start point)")
-            else:
-                # Fallback: try to access as a point or tuple
-                if hasattr(line_zone, 'x'):
-                    x_pos = line_zone.x
+        # Use provided line x-positions or extract from LineZone objects
+        if line_x_positions is not None:
+            self.line_x_positions = line_x_positions
+            print(f"🔧 Initializing SAM Tracker with {len(lines)} lines:")
+            for i, x_pos in enumerate(line_x_positions):
+                print(f"   Line {i+1}: x={x_pos} (provided)")
+        else:
+            # Extract x-coordinates from LineZone objects
+            self.line_x_positions = []
+            print(f"🔧 Initializing SAM Tracker with {len(lines)} lines:")
+            
+            for i, line_zone in enumerate(lines):
+                # LineZone objects have start and end points, extract x-coordinate from start
+                if hasattr(line_zone, 'start') and hasattr(line_zone.start, 'x'):
+                    x_pos = line_zone.start.x
                     self.line_x_positions.append(x_pos)
-                    print(f"   Line {i+1}: x={x_pos} (direct access)")
-                elif isinstance(line_zone, (list, tuple)) and len(line_zone) > 0:
-                    x_pos = line_zone[0]
+                    print(f"   Line {i+1}: x={x_pos} (from start point)")
+                elif hasattr(line_zone, 'start') and hasattr(line_zone.start, 'x_coordinate'):
+                    x_pos = line_zone.start.x_coordinate
                     self.line_x_positions.append(x_pos)
-                    print(f"   Line {i+1}: x={x_pos} (from tuple)")
+                    print(f"   Line {i+1}: x={x_pos} (from x_coordinate)")
+                elif hasattr(line_zone, 'start') and hasattr(line_zone.start, 'coordinates'):
+                    # Try to access coordinates as a tuple
+                    coords = line_zone.start.coordinates
+                    if hasattr(coords, '__getitem__') and len(coords) > 0:
+                        x_pos = coords[0]
+                        self.line_x_positions.append(x_pos)
+                        print(f"   Line {i+1}: x={x_pos} (from coordinates[0])")
+                    else:
+                        print(f"⚠️ Warning: Could not extract x-coordinate from line_zone: {line_zone}")
+                        self.line_x_positions.append(0)  # Default fallback
+                        print(f"   Line {i+1}: x=0 (fallback)")
                 else:
-                    print(f"⚠️ Warning: Could not extract x-coordinate from line_zone: {line_zone}")
-                    self.line_x_positions.append(0)  # Default fallback
-                    print(f"   Line {i+1}: x=0 (fallback)")
+                    # Fallback: try to access as a point or tuple
+                    if hasattr(line_zone, 'x'):
+                        x_pos = line_zone.x
+                        self.line_x_positions.append(x_pos)
+                        print(f"   Line {i+1}: x={x_pos} (direct access)")
+                    elif isinstance(line_zone, (list, tuple)) and len(line_zone) > 0:
+                        x_pos = line_zone[0]
+                        self.line_x_positions.append(x_pos)
+                        print(f"   Line {i+1}: x={x_pos} (from tuple)")
+                    else:
+                        print(f"⚠️ Warning: Could not extract x-coordinate from line_zone: {line_zone}")
+                        self.line_x_positions.append(0)  # Default fallback
+                        print(f"   Line {i+1}: x=0 (fallback)")
         
         print(f"📏 Final line x-positions: {self.line_x_positions}")
         

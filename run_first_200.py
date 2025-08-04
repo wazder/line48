@@ -72,8 +72,11 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
         LINES.append(line_zone)
         print(f"   Line {i+1} ({LINE_IDS[i]}): ({x}, {y}) -> ({x}, {LINE_HEIGHT})")
     
-    # Initialize SAM segment tracker
-    sam_tracker = SAMSegmentTracker(lines=LINES, fps=video_info.fps)
+    # Extract x-positions for SAM tracker
+    LINE_X_POSITIONS = [x for x, y in LINE_POINTS]
+    
+    # Initialize SAM segment tracker with explicit line positions
+    sam_tracker = SAMSegmentTracker(lines=LINES, fps=video_info.fps, line_x_positions=LINE_X_POSITIONS)
     line_annotators = [
         sv.LineZoneAnnotator(
             display_in_count=False,
