@@ -121,8 +121,13 @@ class FrameOverlay:
                     # Color based on class
                     color = self.colors.get(obj_class, self.colors['text'])
                     
-                    # Object info text
-                    obj_text = f"  {obj_class} ({direction}) - ID:{track_id} - Conf:{confidence:.2f}"
+                    # Object info text - handle confidence as string or float
+                    try:
+                        conf_value = float(confidence) if confidence is not None else 0.0
+                        obj_text = f"  {obj_class} ({direction}) - ID:{track_id} - Conf:{conf_value:.2f}"
+                    except (ValueError, TypeError):
+                        obj_text = f"  {obj_class} ({direction}) - ID:{track_id} - Conf:{confidence}"
+                    
                     cv2.putText(frame, obj_text, (20, self.frame_height + obj_y_offset), 
                                self.font, self.small_font_scale, color, 
                                self.small_font_thickness)
