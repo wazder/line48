@@ -27,7 +27,7 @@ class SAMLineLogic:
                  sam_model_type: str = "vit_h",
                  sam_checkpoint: str = None,
                  yolo_model: str = "yolo11n.pt",
-                 device: str = "cuda:0"):
+                 device: str = "cuda:0" if torch.cuda.is_available() else "cpu"):
         """
         Initialize SAM + LineLogic system.
         
@@ -40,7 +40,7 @@ class SAMLineLogic:
         self.device = device
         self.sam_model_type = sam_model_type
         
-        # Initialize YOLO for object detection
+        # Initialize YOLO for object detection with tracking
         self.yolo_model = YOLO(yolo_model)
         print(f"✅ YOLO model loaded: {yolo_model}")
         
@@ -96,8 +96,8 @@ class SAMLineLogic:
         Returns:
             Tuple of (segmented_frame, detection_results)
         """
-        # YOLO detection
-        yolo_results = self.yolo_model(frame, verbose=False)
+        # YOLO detection with tracking
+        yolo_results = self.yolo_model.track(frame, verbose=False, persist=True)
         
         if len(yolo_results) == 0:
             return frame, []
@@ -117,15 +117,22 @@ class SAMLineLogic:
             class_id = int(box.cls[0])
             confidence = float(box.conf[0])
             
-            if class_id in self.class_ids and confidence > 0.15:  # Very low confidence for more detections
+            if class_id in self.class_ids and confidence > 0.01:  # Extremely low confidence for more detections
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                 class_name = self.yolo_model.names[class_id]
+                
+                # Add track_id for line crossing detection
+                track_id = int(box.id[0]) if hasattr(box, 'id') and box.id is not None and len(box.id) > 0 else i
+                
+                # Debug output
+                print(f"🎯 Detected: {class_name} (ID:{track_id}) at confidence {confidence:.3f}")
                 
                 detection_results.append({
                     'bbox': [x1, y1, x2, y2],
                     'class': class_name,
                     'confidence': confidence,
-                    'class_id': class_id
+                    'class_id': class_id,
+                    'track_id': track_id  # Add track_id for line crossing
                 })
                 valid_boxes.append([x1, y1, x2, y2])
         
@@ -157,12 +164,15 @@ class SAMLineLogic:
                     mask_area = np.sum(mask)
                     
                     # Filter out very small masks (noise) - VERY RELAXED
-                    min_mask_area = 200  # Very low threshold for more detections
+                    min_mask_area = 50  # Extremely low threshold for more detections
                     if mask_area < min_mask_area:
+                        print(f"⚠️ Mask too small: {mask_area} < {min_mask_area}")
                         continue
                         
                     detection['mask'] = mask
                     detection['mask_score'] = float(scores[0])
+                    
+                    print(f"✅ SAM mask created: {detection['class']} (ID:{detection['track_id']}) - Area: {mask_area}")
                     
                     # Visualize mask on frame
                     colored_mask = self._create_colored_mask(mask, i)

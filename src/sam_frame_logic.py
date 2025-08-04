@@ -14,9 +14,9 @@ class SAMSegmentTracker:
     def __init__(self, 
                  lines: List[sv.Point],
                  fps: float = 30.0,
-                 min_safe_time: float = 0.5,    # Yumuşatıldı
-                 min_uncertain_time: float = 0.3, # Yumuşatıldı
-                 min_very_brief_time: float = 0.1): # Yumuşatıldı
+                 min_safe_time: float = 0.1,    # Much more relaxed
+                 min_uncertain_time: float = 0.05, # Much more relaxed
+                 min_very_brief_time: float = 0.01): # Much more relaxed
         """Initialize SAM segment tracker."""
         self.lines = lines
         self.fps = fps
@@ -172,16 +172,22 @@ class SAMSegmentTracker:
     
     def _detect_line_crossing_simple(self, prev_x, curr_x, line_x, track_id, obj_class, line_id, frame_idx):
         """Improved line crossing detection using x coordinates."""
-        # Add tolerance for line crossing detection
-        tolerance = 10  # pixels
+        # Add tolerance for line crossing detection - MUCH MORE RELAXED
+        tolerance = 50  # Increased from 10 to 50 pixels
         
         # Check if crossed vertical line with tolerance
         line_crossed = False
         if (prev_x < line_x < curr_x) or (curr_x < line_x < prev_x):
             line_crossed = True
+            print(f"🎯 Direct crossing: {prev_x:.1f} → {curr_x:.1f} (line at {line_x})")
         elif abs(prev_x - line_x) <= tolerance and abs(curr_x - line_x) <= tolerance:
             # Object is very close to line
             line_crossed = True
+            print(f"🎯 Near line crossing: {prev_x:.1f} → {curr_x:.1f} (line at {line_x}, tolerance: {tolerance})")
+        elif abs(prev_x - line_x) <= tolerance * 2:  # Even more relaxed
+            # Object is within extended tolerance
+            line_crossed = True
+            print(f"🎯 Extended tolerance crossing: {prev_x:.1f} → {curr_x:.1f} (line at {line_x}, extended tolerance: {tolerance * 2})")
         
         if line_crossed:
             direction = "IN" if prev_x < curr_x else "OUT"
@@ -191,7 +197,7 @@ class SAMSegmentTracker:
             
             # Add confidence based on movement distance
             movement_distance = abs(curr_x - prev_x)
-            confidence = min(1.0, movement_distance / 50.0)  # Normalize confidence
+            confidence = min(1.0, movement_distance / 20.0)  # More relaxed confidence calculation
             
             crossing_info = {
                 'track_id': track_id,

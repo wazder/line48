@@ -49,7 +49,7 @@ def setup_arguments():
     # YOLO parameters
     parser.add_argument("--yolo-model", type=str, default="yolo11n.pt",
                        help="YOLO model for object detection")
-    parser.add_argument("--confidence", type=float, default=0.2,
+    parser.add_argument("--confidence", type=float, default=0.01,  # Much more relaxed
                        help="YOLO confidence threshold")
     parser.add_argument("--iou", type=float, default=0.45,
                        help="YOLO NMS IoU threshold")
@@ -57,11 +57,11 @@ def setup_arguments():
                        help="YOLO input image size")
     
     # Frame logic parameters
-    parser.add_argument("--min-safe-time", type=float, default=0.3,
+    parser.add_argument("--min-safe-time", type=float, default=0.1,  # Much more relaxed
                        help="Minimum time for safe predictions (seconds)")
-    parser.add_argument("--min-uncertain-time", type=float, default=0.2,
+    parser.add_argument("--min-uncertain-time", type=float, default=0.05,  # Much more relaxed
                        help="Minimum time for uncertain predictions (seconds)")
-    parser.add_argument("--min-very-brief-time", type=float, default=0.1,
+    parser.add_argument("--min-very-brief-time", type=float, default=0.01,  # Much more relaxed
                        help="Minimum time for very brief predictions (seconds)")
     
     # Processing parameters
@@ -234,8 +234,24 @@ def run_sam_analysis(args):
             # SAM detection and segmentation
             segmented_frame, detections = sam_logic.detect_and_segment(frame)
             
+            # Debug output
+            if detections:
+                print(f"🟢 Frame {frame_idx}: {len(detections)} detections")
+                for det in detections:
+                    print(f"   - {det['class']} (ID:{det['track_id']}) at confidence {det['confidence']:.3f}")
+            else:
+                print(f"🔴 Frame {frame_idx}: No detections")
+            
             # Update segment tracker
             crossings = segment_tracker.update(frame_idx, detections)
+            
+            # Debug crossings
+            if crossings:
+                print(f"🎯 Frame {frame_idx}: {len(crossings)} line crossings detected!")
+                for crossing in crossings:
+                    print(f"   - {crossing['class']} crossed line {crossing['line_id']} ({crossing['direction']})")
+            else:
+                print(f"📊 Frame {frame_idx}: No line crossings")
             
             # Log detections
             for detection in detections:
