@@ -76,6 +76,7 @@ class SAMSegmentTracker:
         self.detected_crossings = set()  # (track_id, line_id, direction)
         self.recent_crossings = []  # Store recent crossings with positions for spatial deduplication
         self.frame_crossings = {}  # Track crossings per frame: {frame_idx: [(class, x_pos), ...]}
+        self.spatial_temporal_history = []  # Track all crossings with spatial-temporal info
         
         # Statistics
         self.stats = {
@@ -211,7 +212,7 @@ class SAMSegmentTracker:
             'person': 5,       # Very strict for person (5 pixel tolerance)
             'backpack': 20,    # Much stricter for backpack
             'handbag': 20,     # Much stricter for handbag
-            'suitcase': 15     # Even stricter for suitcase
+            'suitcase': 35     # More generous for suitcase (increased from 15)
         }
         line_proximity_threshold = proximity_thresholds.get(obj_class, 50)
         
@@ -246,31 +247,50 @@ class SAMSegmentTracker:
             if crossing_key in self.detected_crossings:
                 return None
             
-            # Same-frame spatial deduplication - prevent counting same object multiple times in same frame
+            # Enhanced spatial-temporal duplicate prevention
+            spatial_temporal_thresholds = {
+                'person': {'spatial': 150, 'temporal': 30},      # 150px, 30 frames  
+                'backpack': {'spatial': 80, 'temporal': 50},     # 80px, 50 frames
+                'handbag': {'spatial': 80, 'temporal': 60},      # 80px, 60 frames
+                'suitcase': {'spatial': 100, 'temporal': 20}     # More generous spatial, shorter temporal
+            }
+            
+            thresholds = spatial_temporal_thresholds.get(obj_class, {'spatial': 100, 'temporal': 30})
+            spatial_threshold = thresholds['spatial']
+            temporal_threshold = thresholds['temporal']
+            
+            # Clean old spatial-temporal history
+            current_time = frame_idx
+            self.spatial_temporal_history = [
+                entry for entry in self.spatial_temporal_history 
+                if abs(entry['frame_idx'] - current_time) <= temporal_threshold
+            ]
+            
+            # Check for spatial-temporal duplicates
+            for entry in self.spatial_temporal_history:
+                if (entry['class'] == obj_class and 
+                    entry['line_id'] == line_id and
+                    abs(entry['x_pos'] - curr_x) < spatial_threshold):
+                    frame_diff = abs(entry['frame_idx'] - frame_idx)
+                    print(f"🚫 Spatial-temporal duplicate [Frame {frame_idx}]: {obj_class} too close to previous crossing at x={entry['x_pos']} ({frame_diff} frames ago)")
+                    return None
+            
+            # Same-frame check (immediate duplicates)
             if frame_idx not in self.frame_crossings:
                 self.frame_crossings[frame_idx] = []
             
-            # Class-specific same-frame spatial thresholds
-            spatial_thresholds_same_frame = {
-                'person': 100,     # Stricter for person (reduced from 150)
-                'backpack': 40,    # Much stricter for backpack
-                'handbag': 40,     # Much stricter for handbag
-                'suitcase': 30     # Very strict for suitcase
-            }
-            spatial_threshold_same_frame = spatial_thresholds_same_frame.get(obj_class, 100)
-            
             for existing_class, existing_x in self.frame_crossings[frame_idx]:
                 if (existing_class == obj_class and 
-                    abs(existing_x - curr_x) < spatial_threshold_same_frame):
+                    abs(existing_x - curr_x) < 50):  # Very tight same-frame check
                     print(f"🚫 Same frame duplicate [Frame {frame_idx}]: {obj_class} at x={curr_x} too close to existing at x={existing_x}")
                     return None
             
             # Class-specific time thresholds for different objects
             time_thresholds = {
-                'person': 8,      # Even longer gap for person (increased from 5)
+                'person': 8,      # Even longer gap for person
                 'backpack': 15,   # Much longer gap for backpack
                 'handbag': 20,    # Very long gap for handbag
-                'suitcase': 25    # Extremely long gap for suitcase
+                'suitcase': 10    # Shorter gap for suitcase (reduced from 25)
             }
             time_threshold = time_thresholds.get(obj_class, 3)
             
@@ -321,6 +341,14 @@ class SAMSegmentTracker:
             
             # Add to frame crossings to prevent same-frame duplicates
             self.frame_crossings[frame_idx].append((obj_class, curr_x))
+            
+            # Add to spatial-temporal history
+            self.spatial_temporal_history.append({
+                'class': obj_class,
+                'line_id': line_id,
+                'x_pos': curr_x,
+                'frame_idx': frame_idx
+            })
             
             # Print valid crossing only when it's actually counted
             closest_distance = min(abs(prev_x - line_x), abs(curr_x - line_x))
