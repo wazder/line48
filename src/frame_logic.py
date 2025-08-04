@@ -97,6 +97,7 @@ class FrameBasedTracker:
             return (128, 128, 128)  # Gray
     
     def process_line_crossing(self, detections, current_frame, lines, line_ids, class_names):
+        crossings = []
         for line_idx, line in enumerate(lines):
             crossed_in, crossed_out = line.trigger(detections)
             # IN crossings
@@ -109,6 +110,20 @@ class FrameBasedTracker:
                         confidence = self.classify_prediction_confidence(duration_frames)
                         cls = class_names[detections.class_id[i]]
                         timestamp = str(timedelta(seconds=int(current_frame / self.fps)))
+                        
+                        # Add to crossings list for visualization
+                        if len(detections.xyxy) > i:
+                            bbox = detections.xyxy[i]
+                            center_x = int((bbox[0] + bbox[2]) / 2)
+                            center_y = int((bbox[1] + bbox[3]) / 2)
+                            crossings.append({
+                                'position': (center_x, center_y),
+                                'class': cls,
+                                'direction': 'IN',
+                                'confidence': confidence,
+                                'track_id': tid
+                            })
+                        
                         if confidence == "discard":
                             self.discarded_crossings.append((tid, cls, line_ids[line_idx], "IN", current_frame, duration_frames))
                         else:
@@ -130,6 +145,20 @@ class FrameBasedTracker:
                         confidence = self.classify_prediction_confidence(duration_frames)
                         cls = class_names[detections.class_id[i]]
                         timestamp = str(timedelta(seconds=int(current_frame / self.fps)))
+                        
+                        # Add to crossings list for visualization
+                        if len(detections.xyxy) > i:
+                            bbox = detections.xyxy[i]
+                            center_x = int((bbox[0] + bbox[2]) / 2)
+                            center_y = int((bbox[1] + bbox[3]) / 2)
+                            crossings.append({
+                                'position': (center_x, center_y),
+                                'class': cls,
+                                'direction': 'OUT',
+                                'confidence': confidence,
+                                'track_id': tid
+                            })
+                        
                         if confidence == "discard":
                             self.discarded_crossings.append((tid, cls, line_ids[line_idx], "OUT", current_frame, duration_frames))
                         else:
@@ -141,6 +170,8 @@ class FrameBasedTracker:
                                 tid, cls, line_ids[line_idx], "OUT", current_frame, 
                                 timestamp, confidence, f"{duration_seconds:.2f}s"
                             ])
+        
+        return crossings
     def get_results_summary(self):
         return dict(self.per_class_counter)
     def get_log_rows(self):
