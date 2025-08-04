@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Run SAM analysis for first 200 frames only
+Run SAM analysis for full video
 """
 
 import os
@@ -60,7 +60,10 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
     
     # Get video info
     video_info = VideoInfo.from_video_path(video_path)
+    total_frames = int(video_info.total_frames) if hasattr(video_info, 'total_frames') else "Unknown"
+    duration = video_info.total_frames / video_info.fps if hasattr(video_info, 'total_frames') else "Unknown"
     print(f"📊 Video info: {video_info.width}x{video_info.height}, {video_info.fps} FPS")
+    print(f"📊 Total frames: {total_frames}, Duration: {duration} seconds")
     
     # LINE_POINTS are already sv.Point objects
     LINE_IDS = ["LeftMost", "Left", "Center", "Right", "RightMost"]
@@ -163,10 +166,10 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
             line_crossings=crossings,
             detections=detections,
             current_frame=frame_count,
-            total_frames=max_frames if max_frames else "Unknown",
+            total_frames=max_frames if max_frames else total_frames,
             fps=video_info.fps,
             processing_time=None,
-            timestamp=f"Frame {frame_count}/{max_frames if max_frames else 'Total'}",
+            timestamp=f"Frame {frame_count}/{max_frames if max_frames else total_frames}",
             sam_tracker=sam_tracker
         )
         
