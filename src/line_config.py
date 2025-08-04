@@ -15,6 +15,14 @@ env_path = os.path.join(project_root, "envs", "lov10-env310", "Lib", "site-packa
 if os.path.exists(env_path):
     sys.path.insert(0, env_path)
 
+# Line configuration defaults
+LINE_HEIGHT = 1080
+LINE_POINTS = [
+    (880, 0),   # Line 1
+    (960, 0),   # Line 2
+    (1040, 0),  # Line 3
+    (1120, 0)   # Line 4
+]
 
 def calculate_line_positions(base_x, line_spacing, num_lines=4):
     """Calculate X positions for all lines."""
