@@ -3,10 +3,17 @@
 Run SAM analysis for full video
 """
 
-# 🎬 QUICK FRAME CONFIGURATION - Change this value to process different amounts of frames
-# Set to None for entire video, or any number for specific frame count
-FRAME_LIMIT = 2000  # Examples: None (full video), 800, 1000, 2000, etc.
-# APTAL OLMA BURDAN DEGISTIR !!!!!!!!! >*<
+# 🎬 FRAME RANGE CONFIGURATION - Change these values to process specific frame ranges
+# Set START_FRAME and END_FRAME to process a range, or set END_FRAME to None for entire video from start
+
+START_FRAME = 908        # Starting frame (0 = beginning of video)
+END_FRAME = 1182       # Ending frame (None = until end of video)
+
+# Examples:
+# START_FRAME = 0, END_FRAME = 1000     -> Process frames 0-999 (first 1000 frames)
+# START_FRAME = 500, END_FRAME = 1500   -> Process frames 500-1499 (middle 1000 frames)  
+# START_FRAME = 1000, END_FRAME = None  -> Process from frame 1000 to end of video
+# START_FRAME = 0, END_FRAME = None     -> Process entire video
 
 import os
 import sys
@@ -26,18 +33,25 @@ from config import LINE_END_Y
 import supervision as sv
 from supervision import VideoInfo
 
-def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=None):
+def run_sam_video_analysis(video_path, output_dir="outputs", start_frame=0, end_frame=None):
     """
-    Process entire video with SAM analysis
+    Process video with SAM analysis for specified frame range
     """
-    print("🎬 SAM Full Video Analysis")
+    print("🎬 SAM Video Analysis")
     print("=" * 50)
     print(f"📹 Video: {video_path}")
-    if max_frames is not None:
-        print(f"🎯 Max frames: {max_frames}")
-        print(f"🎯 Estimated duration: {max_frames/29:.1f} seconds at 29 FPS")
+    
+    # Calculate frame range
+    total_frames = end_frame - start_frame if end_frame is not None else "Unknown"
+    
+    print(f"🎯 Start frame: {start_frame}")
+    if end_frame is not None:
+        print(f"🎯 End frame: {end_frame}")
+        print(f"🎯 Total frames to process: {total_frames}")
+        print(f"🎯 Estimated duration: {total_frames/30:.1f} seconds at 30 FPS")
     else:
-        print(f"🎯 Processing entire video")
+        print(f"🎯 End frame: End of video")
+        print(f"🎯 Processing from frame {start_frame} to end of video")
     
     # Check if video exists
     if not os.path.exists(video_path):
@@ -111,10 +125,11 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
     # Setup video writer
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     video_name = os.path.splitext(os.path.basename(video_path))[0]
-    if max_frames is not None:
-        output_path = os.path.join(output_dir, f"{video_name}_sam_{max_frames}frames_{timestamp}.mp4")
+    
+    if end_frame is not None:
+        output_path = os.path.join(output_dir, f"{video_name}_sam_f{start_frame}-{end_frame}_{timestamp}.mp4")
     else:
-        output_path = os.path.join(output_dir, f"{video_name}_sam_full_{timestamp}.mp4")
+        output_path = os.path.join(output_dir, f"{video_name}_sam_f{start_frame}-end_{timestamp}.mp4")
     
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_path, fourcc, video_info.fps, (video_info.width, video_info.height + 150))
@@ -125,12 +140,18 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
     start_time = time.time()
     processed_frames = 0
     
-    if max_frames is not None:
-        print(f"\n🔄 Processing frames 0-{max_frames-1} with SAM...")
-    else:
-        print(f"\n🔄 Processing entire video with SAM...")
+    # Skip to start frame if needed
+    if start_frame > 0:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+        frame_count = start_frame
+        print(f"\n⏭️ Skipping to frame {start_frame}")
     
-    while max_frames is None or frame_count < max_frames:
+    if end_frame is not None:
+        print(f"\n🔄 Processing frames {start_frame}-{end_frame-1} with SAM...")
+    else:
+        print(f"\n🔄 Processing from frame {start_frame} to end of video with SAM...")
+    
+    while end_frame is None or frame_count < end_frame:
         ret, frame = cap.read()
         if not ret:
             print(f"⚠️ End of video reached at frame {frame_count}")
@@ -202,10 +223,10 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
             line_crossings=crossings,
             detections=detections,
             current_frame=frame_count,
-            total_frames=max_frames if max_frames is not None else total_frames,
+            total_frames=end_frame if end_frame is not None else "End",
             fps=video_info.fps,
             processing_time=None,
-            timestamp=f"Frame {frame_count}/{max_frames if max_frames is not None else total_frames}",
+            timestamp=f"Frame {frame_count}/{end_frame if end_frame is not None else 'End'}",
             sam_tracker=sam_tracker
         )
         
@@ -216,8 +237,9 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
         if frame_count % 100 == 0:
             elapsed = time.time() - start_time
             fps_processing = processed_frames / elapsed if elapsed > 0 else 0
-            if max_frames is not None:
-                print(f"🟢 Processed frame {frame_count}/{max_frames} | Speed: {fps_processing:.1f} FPS")
+            if end_frame is not None:
+                progress = ((frame_count - start_frame) / (end_frame - start_frame)) * 100
+                print(f"🟢 Processed frame {frame_count}/{end_frame} ({progress:.1f}%) | Speed: {fps_processing:.1f} FPS")
             else:
                 print(f"🟢 Processed frame {frame_count} | Speed: {fps_processing:.1f} FPS")
         
@@ -249,8 +271,8 @@ if __name__ == "__main__":
         print(f"❌ Video not found: {video_path}")
         sys.exit(1)
     
-    # Run SAM analysis with configured frame limit
-    output_path = run_sam_full_video_analysis(video_path, max_frames=FRAME_LIMIT)
+    # Run SAM analysis with configured frame range
+    output_path = run_sam_video_analysis(video_path, start_frame=START_FRAME, end_frame=END_FRAME)
     
     if output_path:
         print(f"\n🎉 SAM full video analysis completed successfully!")
