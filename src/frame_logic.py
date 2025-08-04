@@ -146,4 +146,20 @@ class FrameBasedTracker:
     def get_log_rows(self):
         return self.log_rows.copy()
     def get_discarded_summary(self):
-        return self.discarded_crossings.copy() 
+        return self.discarded_crossings.copy()
+    
+    def get_line_in_count(self, line_id):
+        """Get count of objects that crossed the line IN direction."""
+        count = 0
+        for tid, cls, lid, direction, frame, duration in self.log_rows:
+            if lid == line_id and direction == "IN":
+                count += 1
+        return count
+    
+    def get_line_out_count(self, line_id):
+        """Get count of objects that crossed the line OUT direction."""
+        count = 0
+        for tid, cls, lid, direction, frame, duration in self.log_rows:
+            if lid == line_id and direction == "OUT":
+                count += 1
+        return count 

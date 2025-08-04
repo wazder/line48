@@ -54,12 +54,12 @@ def run_first_200_frames(video_path, output_dir="outputs"):
     model.iou = 0.45
     model.imgsz = 1024
     
-    # Initialize tracker
-    tracker = FrameBasedTracker(fps=video_info.fps)
-    
     # Get video info
     video_info = VideoInfo.from_video_path(video_path)
     print(f"📊 Video info: {video_info.width}x{video_info.height}, {video_info.fps} FPS")
+    
+    # Initialize tracker
+    tracker = FrameBasedTracker(fps=video_info.fps)
     
     # Convert line positions to sv.Point objects
     LINE_POINTS_SV = [sv.Point(x, y) for x, y in LINE_POINTS]

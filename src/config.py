@@ -12,16 +12,19 @@ TARGET_VIDEO_PATH = ""
 LOG_CSV_PATH = ""
 
 # Line configuration defaults
+BASE_X = 960
+LINE_SPACING = 125
 LINE_HEIGHT = 1080
 LINE_POINTS = [
-    sv.Point(400, 0),   # Line 1 - Where person 1 is moving
-    sv.Point(500, 0),   # Line 2 - Where person 1 crosses
-    sv.Point(1500, 0),  # Line 3 - Where person 2 is
-    sv.Point(1700, 0)   # Line 4 - Where person 3 and backpack are
+    sv.Point(BASE_X - 2*(LINE_SPACING), 0), #LeftMost line
+    sv.Point(BASE_X - LINE_SPACING, 0),  # Left line
+    sv.Point(BASE_X, 0),                 # Center line
+    sv.Point(BASE_X + LINE_SPACING, 0),   # Right line
+    sv.Point(BASE_X + (2*LINE_SPACING), 0), # RightMost line
 ]
 
 # Line IDs for identification
-LINE_IDS = [1, 2, 3, 4]
+LINE_IDS = ["LeftMost", "Left", "Center", "Right", "RightMost"]
 
 # COCO class names for detection
 COCO_NAMES = ["person", "backpack", "handbag", "suitcase"]
