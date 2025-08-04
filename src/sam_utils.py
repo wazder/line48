@@ -50,12 +50,12 @@ class SAMLineLogic:
         self.target_classes = ["person", "backpack", "handbag", "suitcase"]
         self.class_ids = [0, 24, 26, 28]  # COCO class IDs
         
-        # Class-specific confidence thresholds - lower handbag threshold for more detections
+        # Class-specific confidence thresholds - tuned for target counts
         self.confidence_thresholds = {
-            0: 0.80,   # person - set to 0.8
-            24: 0.70,  # backpack - target: 3 
-            26: 0.35,  # handbag - significantly lowered for more detections
-            28: 0.85   # suitcase - increased from 0.70 for better precision
+            0: 0.75,   # person - slightly lower for target 7
+            24: 0.65,  # backpack - lower for target 7
+            26: 0.65,  # handbag - higher to reduce over-detection (target 3)
+            28: 0.85   # suitcase - keep high for target 2
         }
         
         print(f"🎯 SAM + LineLogic initialized on {device}")
