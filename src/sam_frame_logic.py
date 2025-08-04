@@ -202,9 +202,9 @@ class SAMSegmentTracker:
     
     def _detect_line_crossing_simple(self, prev_x, curr_x, line_x, track_id, obj_class, line_id, frame_idx):
         """Improved line crossing detection using x coordinates."""
-        # Strict line crossing detection - only count objects that really cross the line
-        min_movement = 40  # Higher minimum movement for more reliable crossing detection
-        line_proximity_threshold = 30  # Object must be close to line to count as crossing
+        # Balanced line crossing detection
+        min_movement = 30  # Reasonable movement for crossing detection
+        line_proximity_threshold = 80  # More reasonable proximity to line (increased from 30)
         
         # Check if movement is significant enough
         movement_distance = abs(curr_x - prev_x)
@@ -224,7 +224,9 @@ class SAMSegmentTracker:
                 crossing_type = "direct_cross"
                 print(f"✅ Valid crossing: {obj_class} passed {closest_distance_to_line}px from line {line_id}")
             else:
-                print(f"🚫 Too far: {obj_class} passed {closest_distance_to_line}px from line {line_id} (max: {line_proximity_threshold}px)")
+                # Reduce spam - only show rejection for very close misses
+                if closest_distance_to_line <= line_proximity_threshold + 20:
+                    print(f"🚫 Close miss: {obj_class} passed {closest_distance_to_line}px from line {line_id} (need ≤{line_proximity_threshold}px)")
                 return None
         
         if line_crossed:
