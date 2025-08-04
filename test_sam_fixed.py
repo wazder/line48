@@ -61,7 +61,7 @@ def test_sam_fixed():
     print("=" * 40)
     
     try:
-        # En son SAM sonuçlarını bul
+        # En son SAM sonuçlarını bul - look for the most recent file
         sam_files = glob.glob('logs/*sam*results*.csv')
         if sam_files:
             latest_sam = max(sam_files, key=os.path.getctime)
@@ -77,6 +77,7 @@ def test_sam_fixed():
             
             if total_crossings > 0:
                 print("✅ SAM line crossing tespit etti!")
+                print(f"🎉 Başarılı! {total_crossings} line crossing tespit edildi!")
             else:
                 print("❌ SAM hala line crossing tespit etmiyor")
                 
@@ -85,6 +86,8 @@ def test_sam_fixed():
             
     except Exception as e:
         print(f"❌ Sonuç analizi hatası: {e}")
+        import traceback
+        traceback.print_exc()
     
     print(f"\n🎉 Test tamamlandı!")
     print(f"⏱️ Test süresi: {time_taken:.1f}s")
