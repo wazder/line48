@@ -50,11 +50,11 @@ class SAMLineLogic:
         self.target_classes = ["person", "backpack", "handbag", "suitcase"]
         self.class_ids = [0, 24, 26, 28]  # COCO class IDs
         
-        # Class-specific confidence thresholds - very low handbag threshold
+        # Class-specific confidence thresholds - person at 0.8
         self.confidence_thresholds = {
-            0: 0.88,   # person - target: 3
+            0: 0.80,   # person - set to 0.8
             24: 0.70,  # backpack - target: 3 
-            26: 0.40,  # handbag - drastically lowered from 0.65 to detect more
+            26: 0.40,  # handbag - target: 1
             28: 0.70   # suitcase - target: 2 
         }
         
