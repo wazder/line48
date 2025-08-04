@@ -111,6 +111,8 @@ class SAMLineLogic:
         detection_results = []
         valid_boxes = []
         
+        print(f"🔍 Frame detections: {len(boxes)} total boxes")
+        
         for i, box in enumerate(boxes):
             class_id = int(box.cls[0])
             confidence = float(box.conf[0])
@@ -122,6 +124,8 @@ class SAMLineLogic:
                 # Add track_id for line crossing detection
                 track_id = int(box.id[0]) if hasattr(box, 'id') and box.id is not None and len(box.id) > 0 else i
                 
+                print(f"   ✅ {class_name} (conf: {confidence:.4f}, track: {track_id})")
+                
                 detection_results.append({
                     'bbox': [x1, y1, x2, y2],
                     'class': class_name,
@@ -130,6 +134,11 @@ class SAMLineLogic:
                     'track_id': track_id  # Add track_id for line crossing
                 })
                 valid_boxes.append([x1, y1, x2, y2])
+            else:
+                if class_id in self.class_ids:
+                    print(f"   ❌ {self.yolo_model.names[class_id]} (conf: {confidence:.4f} too low)")
+        
+        print(f"   📊 Valid detections: {len(detection_results)}")
         
         if not valid_boxes:
             return frame, []
@@ -159,10 +168,10 @@ class SAMLineLogic:
                     mask_area = np.sum(mask)
                     
                     # Filter out very small masks (noise) - VERY RELAXED
-                    min_mask_area = 10  # Extremely low threshold for more detections
+                    min_mask_area = 5  # Extremely low threshold for more detections
                     if mask_area < min_mask_area:
+                        print(f"      ⚠️ Mask too small: {mask_area} < {min_mask_area}")
                         continue
-                        
 
                     detection['mask'] = mask
                     detection['mask_score'] = float(scores[0])
