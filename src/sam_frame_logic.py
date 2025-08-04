@@ -74,6 +74,7 @@ class SAMSegmentTracker:
         
         # Track which crossings have already been detected to prevent duplicates
         self.detected_crossings = set()  # (track_id, line_id, direction)
+        self.recent_crossings = []  # Store recent crossings with positions for spatial deduplication
         
         # Statistics
         self.stats = {
@@ -227,14 +228,23 @@ class SAMSegmentTracker:
             if crossing_key in self.detected_crossings:
                 return None
             
-            # Additional check: prevent multiple crossings of same object type on same line within short time
-            recent_similar_crossings = [
-                c for c in self.line_crossings[-20:]  # Check last 20 crossings
-                if c['class'] == obj_class and c['line_id'] == line_id and 
-                abs(c['frame_idx'] - frame_idx) < 30  # Within 30 frames
+            # Spatial deduplication - check if similar crossing already exists nearby
+            spatial_threshold = 100  # pixels
+            time_threshold = 60      # frames
+            
+            # Clean up old recent crossings
+            self.recent_crossings = [
+                c for c in self.recent_crossings 
+                if abs(c['frame_idx'] - frame_idx) <= time_threshold
             ]
-            if len(recent_similar_crossings) >= 1:  # Only allow 1 crossing per object type per line
-                return None
+            
+            # Check for spatially similar crossings
+            for recent in self.recent_crossings:
+                if (recent['class'] == obj_class and 
+                    recent['line_id'] == line_id and
+                    abs(recent['curr_x'] - curr_x) < spatial_threshold):
+                    print(f"🚫 Duplicate: {obj_class} at x={curr_x} too close to previous at x={recent['curr_x']}")
+                    return None
             
             # Get track duration for validation
             track_duration = self._get_track_duration(track_id, frame_idx)
@@ -261,6 +271,14 @@ class SAMSegmentTracker:
             
             # Mark this crossing as detected
             self.detected_crossings.add(crossing_key)
+            
+            # Add to recent crossings for spatial deduplication
+            self.recent_crossings.append({
+                'class': obj_class,
+                'line_id': line_id,
+                'curr_x': curr_x,
+                'frame_idx': frame_idx
+            })
             
             return crossing_info
         
