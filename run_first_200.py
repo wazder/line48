@@ -183,12 +183,8 @@ def run_first_200_frames(video_path, output_dir="outputs"):
     return output_path
 
 if __name__ == "__main__":
-    # Get video path
-    video_path = input("Enter video path (or press Enter for default): ").strip()
-    
-    if not video_path:
-        video_path = "videos/test14-3.mp4"
-        print(f"Using default video: {video_path}")
+    # Use default video path
+    video_path = "videos/short_video.mp4"
     
     if not os.path.exists(video_path):
         print(f"❌ Video not found: {video_path}")
