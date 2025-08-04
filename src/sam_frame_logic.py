@@ -208,7 +208,7 @@ class SAMSegmentTracker:
         
         # Different proximity thresholds per object type
         proximity_thresholds = {
-            'person': 100,     # Stricter for person (reduced from 200)
+            'person': 60,      # Even stricter for person (reduced from 100)
             'backpack': 20,    # Much stricter for backpack
             'handbag': 20,     # Much stricter for handbag
             'suitcase': 15     # Even stricter for suitcase
@@ -231,7 +231,7 @@ class SAMSegmentTracker:
             if closest_distance_to_line <= line_proximity_threshold:
                 line_crossed = True
                 crossing_type = "direct_cross"
-                print(f"✅ Valid crossing: {obj_class} passed {closest_distance_to_line}px from line {line_id}")
+                # Don't print here - will print only if crossing is actually counted
             else:
                 # Reduce spam - only show rejection for very close misses
                 if closest_distance_to_line <= line_proximity_threshold + 20:
@@ -252,7 +252,7 @@ class SAMSegmentTracker:
             
             # Class-specific same-frame spatial thresholds
             spatial_thresholds_same_frame = {
-                'person': 150,     # More generous for person
+                'person': 100,     # Stricter for person (reduced from 150)
                 'backpack': 40,    # Much stricter for backpack
                 'handbag': 40,     # Much stricter for handbag
                 'suitcase': 30     # Very strict for suitcase
@@ -267,7 +267,7 @@ class SAMSegmentTracker:
             
             # Class-specific time thresholds for different objects
             time_thresholds = {
-                'person': 5,      # Longer gap for person (increased from 2)
+                'person': 8,      # Even longer gap for person (increased from 5)
                 'backpack': 15,   # Much longer gap for backpack
                 'handbag': 20,    # Very long gap for handbag
                 'suitcase': 25    # Extremely long gap for suitcase
@@ -321,6 +321,10 @@ class SAMSegmentTracker:
             
             # Add to frame crossings to prevent same-frame duplicates
             self.frame_crossings[frame_idx].append((obj_class, curr_x))
+            
+            # Print valid crossing only when it's actually counted
+            closest_distance = min(abs(prev_x - line_x), abs(curr_x - line_x))
+            print(f"✅ COUNTED: {obj_class} crossed line {line_id} at {closest_distance}px distance")
             
             return crossing_info
         
