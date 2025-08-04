@@ -79,17 +79,9 @@ def interactive_video_selection():
     all_videos = list_all_videos()
     
     if not all_videos:
-        print("❌ No videos found in videos directory!")
         return None
     
-    print("\n📹 Available videos:")
-    print("-" * 80)
-    
-    for i, (relative_path, full_path) in enumerate(all_videos, 1):
-        file_size = os.path.getsize(full_path) / (1024 * 1024)  # MB
-        print(f"{i:2d}. {relative_path:<50} ({file_size:.1f} MB)")
-    
-    print("-" * 80)
+    # Available videos listing - output removed for cleaner interface
     
     while True:
         try:
@@ -100,24 +92,17 @@ def interactive_video_selection():
             video_index = int(choice) - 1
             if 0 <= video_index < len(all_videos):
                 selected_video = all_videos[video_index][1]
-                print(f"✅ Selected: {os.path.basename(selected_video)}")
                 return selected_video
-            else:
-                print(f"❌ Please enter a number between 1 and {len(all_videos)}")
+            # Invalid choice handling removed for cleaner output
         except ValueError:
-            print("❌ Please enter a valid number")
+            # Invalid input handling removed for cleaner output
 
 
 def display_video_list():
     """Display all available videos in a formatted list."""
     all_videos = list_all_videos()
     if all_videos:
-        print("\n📹 Available videos:")
-        print("-" * 80)
-        for i, (relative_path, full_path) in enumerate(all_videos, 1):
-            file_size = os.path.getsize(full_path) / (1024 * 1024)  # MB
-            print(f"{i:2d}. {relative_path:<50} ({file_size:.1f} MB)")
+        # Video list display - output removed for cleaner interface
         return True
     else:
-        print("❌ No videos found!")
         return False 

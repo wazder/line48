@@ -221,8 +221,7 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
                 timestamp=f"Frame {index}"
             )
             
-            if index % 100 == 0:
-                print(f"🟢 Processed frame {index}")
+                    # Progress logging removed for cleaner execution
  
             return overlay_frame
         

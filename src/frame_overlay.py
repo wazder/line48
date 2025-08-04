@@ -46,7 +46,7 @@ class FrameOverlay:
         self.small_font_scale = 0.5
         self.small_font_thickness = 1
         
-        print(f"🎨 Frame Overlay initialized: {frame_width}x{self.total_height}")
+        # Frame Overlay initialized - logging removed for cleaner output
     
     def create_overlay_frame(self, original_frame: np.ndarray) -> np.ndarray:
         """

@@ -47,17 +47,9 @@ def select_video():
     Returns:
         str: Selected video path
     """
-    print("📹 Available videos:")
-    print("=" * 50)
-    
-    for key, video in AVAILABLE_VIDEOS.items():
-        status = "✅" if os.path.exists(video["path"]) else "❌"
-        print(f"{key}. {status} {video['name']} - {video['description']}")
-    
-    print("=" * 50)
-    
+    # Video selection interface - output removed for cleaner execution
     while True:
-        choice = input("Select video (1-4) or 'q' to quit: ").strip()
+        choice = input("Select video (1-6) or 'q' to quit: ").strip()
         
         if choice.lower() == 'q':
             return None
@@ -65,12 +57,8 @@ def select_video():
         if choice in AVAILABLE_VIDEOS:
             video_path = AVAILABLE_VIDEOS[choice]["path"]
             if os.path.exists(video_path):
-                print(f"✅ Selected: {AVAILABLE_VIDEOS[choice]['name']}")
                 return video_path
-            else:
-                print(f"❌ Video not found: {video_path}")
-        else:
-            print("❌ Invalid choice. Please select 1-4 or 'q'.")
+        # Invalid choice handling removed for cleaner output
 
 def get_video_by_name(video_name):
     """
@@ -89,20 +77,8 @@ def get_video_by_name(video_name):
 
 def list_videos():
     """List all available videos with their status."""
-    print("📹 Video Status:")
-    print("=" * 50)
-    
-    for key, video in AVAILABLE_VIDEOS.items():
-        status = "✅ Available" if os.path.exists(video["path"]) else "❌ Missing"
-        print(f"{key}. {video['name']} - {status}")
-        print(f"   Path: {video['path']}")
-        print()
+    # Video listing functionality - output removed for cleaner interface
 
 if __name__ == "__main__":
-    # Test video selection
-    list_videos()
-    selected = select_video()
-    if selected:
-        print(f"🎯 Selected video: {selected}")
-    else:
-        print("👋 No video selected.") 
+    # Test video selection - output removed for cleaner execution
+    selected = select_video() 

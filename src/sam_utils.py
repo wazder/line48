@@ -124,9 +124,6 @@ class SAMLineLogic:
                 # Add track_id for line crossing detection
                 track_id = int(box.id[0]) if hasattr(box, 'id') and box.id is not None and len(box.id) > 0 else i
                 
-                # Debug output
-                print(f"🎯 Detected: {class_name} (ID:{track_id}) at confidence {confidence:.3f}")
-                
                 detection_results.append({
                     'bbox': [x1, y1, x2, y2],
                     'class': class_name,
@@ -166,13 +163,12 @@ class SAMLineLogic:
                     # Filter out very small masks (noise) - VERY RELAXED
                     min_mask_area = 50  # Extremely low threshold for more detections
                     if mask_area < min_mask_area:
-                        print(f"⚠️ Mask too small: {mask_area} < {min_mask_area}")
                         continue
                         
                     detection['mask'] = mask
                     detection['mask_score'] = float(scores[0])
                     
-                    print(f"✅ SAM mask created: {detection['class']} (ID:{detection['track_id']}) - Area: {mask_area}")
+                    # SAM mask created - logging removed for cleaner output
                     
                     # Visualize mask on frame
                     colored_mask = self._create_colored_mask(mask, i)
@@ -188,7 +184,6 @@ class SAMLineLogic:
                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 
             except Exception as e:
-                print(f"⚠️ SAM segmentation failed for detection {i}: {e}")
                 detection['mask'] = None
                 detection['mask_score'] = 0.0
         

@@ -137,8 +137,8 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
         # Write frame
         out.write(overlay_frame)
         
-        # Progress update
-        if frame_count % 50 == 0:
+        # Progress update - reduced frequency for cleaner output
+        if frame_count % 100 == 0:
             elapsed = time.time() - start_time
             fps_processing = processed_frames / elapsed if elapsed > 0 else 0
             print(f"🟢 Processed frame {frame_count}/{max_frames} | Speed: {fps_processing:.1f} FPS")

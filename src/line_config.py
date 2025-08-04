@@ -4,16 +4,8 @@ Handles interactive line placement setup with preview functionality.
 """
 
 import os
-import sys
 import cv2
 import numpy as np
-
-# Add virtual environment to Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(current_dir)
-env_path = os.path.join(project_root, "envs", "lov10-env310", "Lib", "site-packages")
-if os.path.exists(env_path):
-    sys.path.insert(0, env_path)
 
 # Line configuration defaults
 BASE_X = 960
@@ -38,7 +30,6 @@ def create_line_preview(video_path, base_x, line_spacing, line_height, num_lines
     # Get video properties
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        print("❌ Cannot open video for line preview")
         return None
     
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -47,7 +38,6 @@ def create_line_preview(video_path, base_x, line_spacing, line_height, num_lines
     # Read first frame
     ret, frame = cap.read()
     if not ret:
-        print("❌ Cannot read video frame for line preview")
         cap.release()
         return None
     
@@ -142,8 +132,6 @@ def interactive_line_setup(video_path):
         print(f"   Line positions: {line_positions}")
         
         # Create and save line preview
-        print(f"\n📸 Creating line placement preview...")
-        
         preview_frame = create_line_preview(video_path, base_x, line_spacing, line_height)
         if preview_frame is not None:
             # Save preview image
@@ -152,8 +140,6 @@ def interactive_line_setup(video_path):
             
             preview_path = os.path.join(preview_dir, "line_placement_preview.jpg")
             cv2.imwrite(preview_path, preview_frame)
-            print(f"   Line preview saved to: {preview_path}")
-            print(f"   Open this image to see where the lines will be placed")
         
         # Ask user if they're satisfied with the result
         while True:
@@ -247,19 +233,15 @@ def manual_line_setup(video_path):
     for i, (x, y) in enumerate(line_positions):
         print(f"   Line {i+1}: ({x}, {y})")
     
-    # Create and save line preview
-    print(f"\n📸 Creating line placement preview...")
-    
-    preview_frame = create_manual_line_preview(video_path, line_positions, LINE_HEIGHT)
-    if preview_frame is not None:
-        # Save preview image
-        preview_dir = os.path.join(os.path.dirname(video_path), "line_preview")
-        os.makedirs(preview_dir, exist_ok=True)
-        
-        preview_path = os.path.join(preview_dir, "manual_line_placement_preview.jpg")
-        cv2.imwrite(preview_path, preview_frame)
-        print(f"   Line preview saved to: {preview_path}")
-        print(f"   Open this image to see where the lines will be placed")
+            # Create and save line preview
+        preview_frame = create_manual_line_preview(video_path, line_positions, LINE_HEIGHT)
+        if preview_frame is not None:
+            # Save preview image
+            preview_dir = os.path.join(os.path.dirname(video_path), "line_preview")
+            os.makedirs(preview_dir, exist_ok=True)
+            
+            preview_path = os.path.join(preview_dir, "manual_line_placement_preview.jpg")
+            cv2.imwrite(preview_path, preview_frame)
     
     # Ask user if they're satisfied
     while True:
@@ -282,7 +264,6 @@ def create_manual_line_preview(video_path, line_positions, line_height):
     # Get video properties
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        print("❌ Cannot open video for line preview")
         return None
     
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -291,7 +272,6 @@ def create_manual_line_preview(video_path, line_positions, line_height):
     # Read first frame
     ret, frame = cap.read()
     if not ret:
-        print("❌ Cannot read video frame for line preview")
         cap.release()
         return None
     

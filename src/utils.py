@@ -30,17 +30,15 @@ def load_model():
     for model_file in model_files:
         model_path = os.path.join(models_dir, model_file)
         if os.path.exists(model_path):
-            print(f"🧠 Loading model: {model_file}")
+            # Loading model - logging removed for cleaner output
             model_single = YOLO(model_path).to("cuda")
-            print(f"✅ Model loaded successfully from: {model_path}")
-            print(f"🔧 Model using device: {model_single.device}")
+            # Model loaded successfully - logging removed for cleaner output
             return model_single
     
     # If no local model found, try to download yolo11x.pt
-    print("⚠️ No local model found, attempting to download yolo11x.pt...")
+    # No local model found, attempting to download - logging removed for cleaner output
     model_single = YOLO("yolo11x.pt").to("cuda")
-    print("✅ Model downloaded and loaded successfully")
-    print(f"🔧 Model using device: {model_single.device}")
+    # Model downloaded and loaded successfully - logging removed for cleaner output
     return model_single
 
 def is_box_inside(box_a, box_b, threshold=0.8):

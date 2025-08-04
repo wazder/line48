@@ -44,17 +44,14 @@ def create_cropped_video(video_path, crop_params):
         output_path
     ]
     
-    print(f"🎬 Creating cropped video...")
-    print(f"   Crop: {width}x{height} at ({x},{y})")
-    print(f"   Output: {output_path}")
+    # Creating cropped video - logging removed for cleaner output
     
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        print(f"✅ Cropped video created successfully!")
+        # Cropped video created successfully - logging removed for cleaner output
         return output_path
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error creating cropped video: {e}")
-        print(f"FFmpeg error: {e.stderr}")
+        # Error creating cropped video - logging removed for cleaner output
         return None
 
 

@@ -24,8 +24,7 @@ def run_yolo_analysis(video_path: str, detailed_info: bool = True, max_frames: i
     Returns:
         Dictionary with analysis results and metadata
     """
-    print("🎯 Running YOLO Analysis...")
-    print("=" * 50)
+    # Running YOLO Analysis - logging removed for cleaner output
     
     # Build command
     cmd = [
@@ -78,8 +77,7 @@ def run_sam_analysis(video_path: str, sam_model: str = "vit_b", detailed_info: b
     Returns:
         Dictionary with analysis results and metadata
     """
-    print("🔬 Running SAM Analysis...")
-    print("=" * 50)
+    # Running SAM Analysis - logging removed for cleaner output
     
     # Build command
     cmd = [

@@ -234,24 +234,12 @@ def run_sam_analysis(args):
             # SAM detection and segmentation
             segmented_frame, detections = sam_logic.detect_and_segment(frame)
             
-            # Debug output
-            if detections:
-                print(f"🟢 Frame {frame_idx}: {len(detections)} detections")
-                for det in detections:
-                    print(f"   - {det['class']} (ID:{det['track_id']}) at confidence {det['confidence']:.3f}")
-            else:
-                print(f"🔴 Frame {frame_idx}: No detections")
+            # Debug output removed for cleaner execution
             
             # Update segment tracker
             crossings = segment_tracker.update(frame_idx, detections)
             
-            # Debug crossings
-            if crossings:
-                print(f"🎯 Frame {frame_idx}: {len(crossings)} line crossings detected!")
-                for crossing in crossings:
-                    print(f"   - {crossing['class']} crossed line {crossing['line_id']} ({crossing['direction']})")
-            else:
-                print(f"📊 Frame {frame_idx}: No line crossings")
+            # Debug crossings removed for cleaner execution
             
             # Log detections
             for detection in detections:

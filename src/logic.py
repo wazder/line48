@@ -1,16 +1,7 @@
 import sys
 import os
-
-# Add virtual environment to Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(current_dir)
-env_path = os.path.join(project_root, "envs", "lov10-env310", "Lib", "site-packages")
-if os.path.exists(env_path):
-    sys.path.insert(0, env_path)
-
 import numpy as np
 import cv2
-import os
 from datetime import timedelta
 from collections import defaultdict
 import supervision as sv

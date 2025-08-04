@@ -43,12 +43,7 @@ class FrameBasedTracker:
         self.log_rows = []
         self.byte_tracker = sv.ByteTrack(track_activation_threshold=0.2, lost_track_buffer=60)
         self.discarded_crossings = []  # List of (tid, cls, line_id, direction, frame, duration_frames)
-        print(f"🔢 Frame thresholds for {fps} FPS:")
-        print(f"   Safe (≥{self.min_safe_frames} frames)")
-        print(f"   Uncertain ({self.min_uncertain_frames}-{self.min_safe_frames-1} frames)")
-        print(f"   Very brief ({self.min_very_brief_frames}-{self.min_uncertain_frames-1} frames)")
-        print(f"   Discard (<{self.min_very_brief_frames} frames)")
-        print(f"   Time thresholds: Safe≥{min_safe_time}s, Uncertain≥{min_uncertain_time}s, Very brief≥{min_very_brief_time}s")
+        # Frame thresholds initialized - logging removed for cleaner output
     
     def update_object_presence(self, detections, current_frame, class_names):
         current_ids = set()
