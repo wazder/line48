@@ -50,12 +50,12 @@ class SAMLineLogic:
         self.target_classes = ["person", "backpack", "handbag", "suitcase"]
         self.class_ids = [0, 24, 26, 28]  # COCO class IDs
         
-        # Class-specific confidence thresholds - adjusted for target counts
+        # Class-specific confidence thresholds - very strict for target counts
         self.confidence_thresholds = {
-            0: 0.75,   # person - target: 3 detections
-            24: 0.65,  # backpack - target: 3 detections
-            26: 0.70,  # handbag - target: 1 detection
-            28: 0.68   # suitcase - target: 2 detections
+            0: 0.92,   # person - target: 3 (currently 46, need much higher)
+            24: 0.88,  # backpack - target: 3 (currently 4, slightly higher)
+            26: 0.85,  # handbag - target: 1 (currently 5, need higher)
+            28: 0.88   # suitcase - target: 2 detections
         }
         
         print(f"🎯 SAM + LineLogic initialized on {device}")
@@ -119,17 +119,7 @@ class SAMLineLogic:
         detection_results = []
         valid_boxes = []
         
-        # Only show debug info when there are detections
-        target_detections = 0
-        for box in boxes:
-            class_id = int(box.cls[0])
-            confidence = float(box.conf[0])
-            required_confidence = self.confidence_thresholds.get(class_id, 0.5)
-            if class_id in self.class_ids and confidence > required_confidence:
-                target_detections += 1
-        
-        if target_detections > 0:
-            print(f"🔍 Frame {frame_count}: {target_detections} valid detections found")
+        # Count valid detections but don't print here (will be printed in line crossing logic)
         
         for i, box in enumerate(boxes):
             class_id = int(box.cls[0])
@@ -144,7 +134,7 @@ class SAMLineLogic:
                 # Add track_id for line crossing detection
                 track_id = int(box.id[0]) if hasattr(box, 'id') and box.id is not None and len(box.id) > 0 else i
                 
-                print(f"   ✅ {class_name} (conf: {confidence:.4f}, track: {track_id})")
+                # Detection logged (will show in line crossing if crosses line)
                 
                 detection_results.append({
                     'bbox': [x1, y1, x2, y2],
@@ -155,7 +145,7 @@ class SAMLineLogic:
                 })
                 valid_boxes.append([x1, y1, x2, y2])
         
-        print(f"   📊 Valid detections: {len(detection_results)}")
+        # Don't print detection count here (will be shown in line crossing summary)
         
         if not valid_boxes:
             return frame, []
