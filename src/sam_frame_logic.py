@@ -208,7 +208,7 @@ class SAMSegmentTracker:
         
         # Different proximity thresholds per object type
         proximity_thresholds = {
-            'person': 30,      # Very strict for person (reduced from 60)
+            'person': 10,      # Extremely strict for person (reduced from 30)
             'backpack': 20,    # Much stricter for backpack
             'handbag': 20,     # Much stricter for handbag
             'suitcase': 15     # Even stricter for suitcase
