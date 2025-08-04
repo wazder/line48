@@ -26,7 +26,7 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
     print("🎬 SAM Full Video Analysis")
     print("=" * 50)
     print(f"📹 Video: {video_path}")
-    if max_frames:
+    if max_frames is not None:
         print(f"🎯 Max frames: {max_frames}")
     else:
         print(f"🎯 Processing entire video")
@@ -102,7 +102,7 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
     # Setup video writer
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     video_name = os.path.splitext(os.path.basename(video_path))[0]
-    if max_frames:
+    if max_frames is not None:
         output_path = os.path.join(output_dir, f"{video_name}_sam_{max_frames}frames_{timestamp}.mp4")
     else:
         output_path = os.path.join(output_dir, f"{video_name}_sam_full_{timestamp}.mp4")
@@ -116,7 +116,7 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
     start_time = time.time()
     processed_frames = 0
     
-    if max_frames:
+    if max_frames is not None:
         print(f"\n🔄 Processing frames 0-{max_frames-1} with SAM...")
     else:
         print(f"\n🔄 Processing entire video with SAM...")
@@ -166,10 +166,10 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
             line_crossings=crossings,
             detections=detections,
             current_frame=frame_count,
-            total_frames=max_frames if max_frames else total_frames,
+            total_frames=max_frames if max_frames is not None else total_frames,
             fps=video_info.fps,
             processing_time=None,
-            timestamp=f"Frame {frame_count}/{max_frames if max_frames else total_frames}",
+            timestamp=f"Frame {frame_count}/{max_frames if max_frames is not None else total_frames}",
             sam_tracker=sam_tracker
         )
         
@@ -180,7 +180,7 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
         if frame_count % 100 == 0:
             elapsed = time.time() - start_time
             fps_processing = processed_frames / elapsed if elapsed > 0 else 0
-            if max_frames:
+            if max_frames is not None:
                 print(f"🟢 Processed frame {frame_count}/{max_frames} | Speed: {fps_processing:.1f} FPS")
             else:
                 print(f"🟢 Processed frame {frame_count} | Speed: {fps_processing:.1f} FPS")
@@ -214,7 +214,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     # Run SAM analysis for entire video
-    output_path = run_sam_full_video_analysis(video_path)
+    output_path = run_sam_full_video_analysis(video_path, max_frames=None)
     
     if output_path:
         print(f"\n🎉 SAM full video analysis completed successfully!")
