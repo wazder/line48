@@ -7,7 +7,7 @@ Run SAM analysis for full video
 # Set START_FRAME and END_FRAME to process a range, or set END_FRAME to None for entire video from start
 
 START_FRAME = 908        # Starting frame (0 = beginning of video)
-END_FRAME = 1182       # Ending frame (None = until end of video)
+END_FRAME = 2600       # Ending frame (None = until end of video)
 
 # Examples:
 # START_FRAME = 0, END_FRAME = 1000     -> Process frames 0-999 (first 1000 frames)

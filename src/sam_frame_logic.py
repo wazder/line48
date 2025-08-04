@@ -263,7 +263,7 @@ class SAMSegmentTracker:
         movement_thresholds = {
             'person': 28,      # Raised from 25 to reduce from 4 to 3
             'backpack': 28,    # Raised from 25 to reduce from 5 to 3
-            'handbag': 35,     # Raised from 15 to reduce from 4 to 1
+            'handbag': 25,     # Lowered from 35 to enable detection (0→1)
             'suitcase': 20     # Raised from 16 to reduce from 10 to 2
         }
         min_movement = movement_thresholds.get(obj_class, 20)
@@ -272,7 +272,7 @@ class SAMSegmentTracker:
         proximity_thresholds = {
             'person': 15,      # Stricter from 18 to reduce from 4 to 3
             'backpack': 35,    # Stricter from 40 to reduce from 5 to 3
-            'handbag': 60,     # Stricter from 120 to reduce from 4 to 1
+            'handbag': 90,     # More lenient from 60 to enable detection (0→1)
             'suitcase': 80     # Stricter from 100 to reduce from 10 to 2
         }
         line_proximity_threshold = proximity_thresholds.get(obj_class, 50)
@@ -340,7 +340,7 @@ class SAMSegmentTracker:
             spatial_temporal_thresholds = {
                 'person': {'spatial': 75, 'temporal': 45},       # Stricter to reduce from 4 to 3
                 'backpack': {'spatial': 85, 'temporal': 35},     # More restrictive to reduce from 5 to 3
-                'handbag': {'spatial': 90, 'temporal': 40},      # Much stricter to reduce from 4 to 1
+                'handbag': {'spatial': 120, 'temporal': 25},     # More lenient to enable detection (0→1)
                 'suitcase': {'spatial': 120, 'temporal': 20}     # Stricter spatial to reduce from 10 to 2
             }
             
@@ -386,7 +386,7 @@ class SAMSegmentTracker:
             time_thresholds = {
                 'person': 18,     # Longer gap from 15 to reduce from 4 to 3
                 'backpack': 15,   # Longer gap from 12 to reduce from 5 to 3
-                'handbag': 25,    # Much longer gap from 5 to reduce from 4 to 1
+                'handbag': 15,    # Shorter gap from 25 to enable detection (0→1)
                 'suitcase': 7     # Longer gap from 5 to reduce from 10 to 2
             }
             time_threshold = time_thresholds.get(obj_class, 3)

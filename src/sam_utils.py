@@ -58,7 +58,7 @@ class SAMLineLogic:
         self.confidence_thresholds = {
             0: 0.85,   # person - raised from 0.82 to reduce from 4 to 3
             24: 0.75,  # backpack - raised from 0.72 to reduce from 5 to 3
-            26: 0.78,  # handbag - raised from 0.50 to reduce from 4 to 1
+            26: 0.65,  # handbag - lowered from 0.78 to enable detection (0→1)
             28: 0.55   # suitcase - raised from 0.45 to reduce from 10 to 2
         }
         
