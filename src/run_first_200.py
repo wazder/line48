@@ -187,25 +187,52 @@ def run_sam_video_analysis(video_path, output_dir="outputs", start_frame=0, end_
         # Update frame with correct category IDs after processing
         frame = segmented_frame.copy()
         
-        # Redraw bounding boxes with correct category IDs
+        # Redraw bounding boxes with correct category IDs - IMPROVED text positioning
         if valid_detections:
-            for det in valid_detections:
+            # Track label positions to prevent overlap
+            used_positions = []
+            
+            for i, det in enumerate(valid_detections):
                 if det.get('mask') is not None:
                     bbox = det.get('bbox', [])
                     if len(bbox) == 4:
                         x1, y1, x2, y2 = [int(coord) for coord in bbox]
                         
-                        # Draw bounding box
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                        
-                        # Add label with correct category ID
-                        category_id = det.get('category_id', det.get('track_id', 'N/A'))
+                        # Draw bounding box with class-specific color
                         obj_class = det.get('class', 'unknown')
+                        box_colors = {
+                            'person': (255, 150, 100),     # Light blue
+                            'backpack': (0, 255, 0),       # Green
+                            'handbag': (255, 0, 255),      # Magenta
+                            'suitcase': (0, 255, 255)      # Yellow
+                        }
+                        box_color = box_colors.get(obj_class, (0, 255, 0))
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, 2)
+                        
+                        # Add label with correct category ID - NO overlap
+                        category_id = det.get('category_id', det.get('track_id', 'N/A'))
                         confidence = det.get('confidence', 0.0)
                         
-                        label = f"{obj_class} {category_id} ({confidence:.2f})"
-                        cv2.putText(frame, label, (x1, y1-10), 
-                                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                        # Simplified label - only category ID and confidence
+                        label = f"{category_id} ({confidence:.2f})"
+                        
+                        # Find non-overlapping position for text
+                        label_x, label_y = x1, y1 - 10
+                        
+                        # Check for overlap and adjust position
+                        for used_x, used_y in used_positions:
+                            if abs(label_x - used_x) < 80 and abs(label_y - used_y) < 20:
+                                label_y -= 20  # Move up to avoid overlap
+                        
+                        # Add background for better readability
+                        (text_width, text_height), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+                        cv2.rectangle(frame, (label_x, label_y - text_height - 2), 
+                                    (label_x + text_width, label_y + 2), (0, 0, 0), -1)
+                        
+                        cv2.putText(frame, label, (label_x, label_y), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color, 1)
+                        
+                        used_positions.append((label_x, label_y))
         
         # Annotate lines
         for line, line_annotator in zip(LINES, line_annotators):
@@ -214,8 +241,8 @@ def run_sam_video_analysis(video_path, output_dir="outputs", start_frame=0, end_
         # Add line crossing indicators
         frame = frame_overlay.draw_line_indicators(frame, crossings)
         
-        # Add category IDs overlay to the main video frame
-        frame = frame_overlay.add_category_ids_overlay(frame, detections, sam_tracker)
+        # Add category IDs overlay to the main video frame - use valid_detections for consistency
+        frame = frame_overlay.add_category_ids_overlay(frame, valid_detections, sam_tracker)
         
         # Create overlay with information
         overlay_frame = frame_overlay.create_complete_overlay(

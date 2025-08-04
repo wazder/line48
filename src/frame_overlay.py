@@ -39,12 +39,14 @@ class FrameOverlay:
             'suitcase': (0, 255, 255)        # Yellow
         }
         
-        # Font settings
+        # Font settings - IMPROVED for better readability
         self.font = cv2.FONT_HERSHEY_SIMPLEX
-        self.font_scale = 0.6
+        self.font_scale = 0.7
         self.font_thickness = 2
-        self.small_font_scale = 0.5
-        self.small_font_thickness = 1
+        self.small_font_scale = 0.6
+        self.small_font_thickness = 2
+        self.tiny_font_scale = 0.5
+        self.tiny_font_thickness = 1
         
         # Frame Overlay initialized - logging removed for cleaner output
     
@@ -213,7 +215,7 @@ class FrameOverlay:
     def add_category_ids_overlay(self, frame: np.ndarray, current_detections: List[Dict], 
                                 sam_tracker=None) -> np.ndarray:
         """
-        Add category IDs overlay to the main video frame.
+        Add category IDs overlay to the main video frame - FIXED for better visibility.
         
         Args:
             frame: Original video frame (not the extended overlay frame)
@@ -226,52 +228,73 @@ class FrameOverlay:
         if not sam_tracker:
             return frame
             
-        # Left side: Currently entering objects (recent crossings)
-        recent_crossings = getattr(sam_tracker, 'recent_crossings', [])
-        if recent_crossings:
-            cv2.putText(frame, "Currently Entering:", (10, 30), 
-                       self.font, self.small_font_scale, self.colors['highlight'], 
-                       self.small_font_thickness)
-            
-            y_offset = 50
-            for i, crossing in enumerate(recent_crossings[-5:]):  # Show last 5
-                obj_class = crossing.get('class', 'unknown')
-                track_id = crossing.get('track_id', 'N/A')
-                
-                # Get category ID
-                if hasattr(sam_tracker, '_get_category_id') and track_id != 'N/A':
-                    try:
-                        category_id = sam_tracker._get_category_id(int(track_id), obj_class)
-                    except:
-                        category_id = track_id
-                else:
-                    category_id = track_id
-                
-                color = self.colors.get(obj_class, self.colors['text'])
-                text = f"{category_id} ({obj_class})"
-                cv2.putText(frame, text, (10, y_offset), 
-                           self.font, self.small_font_scale, color, 
-                           self.small_font_thickness)
-                y_offset += 20
+        # Add semi-transparent background for better text readability
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (5, 5), (300, 200), (0, 0, 0), -1)  # Black background
+        cv2.rectangle(overlay, (frame.shape[1] - 250, 5), (frame.shape[1] - 5, 200), (0, 0, 0), -1)  # Black background right
+        frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)  # Blend for transparency
         
-        # Right side: All detected objects with category IDs
+        # Left side: Currently entering objects (from recent line crossings)
+        recent_line_crossings = getattr(sam_tracker, 'line_crossings', [])
+        if recent_line_crossings:
+            # Get recent crossings (last 10 frames worth)
+            recent_crossings = [c for c in recent_line_crossings[-10:] if c.get('direction') == 'IN']
+            
+            if recent_crossings:
+                cv2.putText(frame, "Currently Entering:", (10, 25), 
+                           self.font, self.small_font_scale, self.colors['highlight'], 
+                           self.small_font_thickness)
+                
+                y_offset = 45
+                shown_ids = set()  # Prevent duplicates
+                for crossing in recent_crossings[-5:]:  # Show last 5 unique
+                    obj_class = crossing.get('class', 'unknown')
+                    track_id = crossing.get('track_id', 'N/A')
+                    
+                    # Get category ID
+                    category_id = 'N/A'
+                    if hasattr(sam_tracker, 'category_ids') and track_id in sam_tracker.category_ids:
+                        category_id = sam_tracker.category_ids[track_id]
+                    elif hasattr(sam_tracker, '_get_category_id') and track_id != 'N/A':
+                        try:
+                            category_id = sam_tracker._get_category_id(int(track_id), obj_class)
+                        except:
+                            pass
+                    
+                    # Skip if already shown
+                    if category_id in shown_ids or category_id == 'N/A':
+                        continue
+                    shown_ids.add(category_id)
+                    
+                    color = self.colors.get(obj_class, self.colors['text'])
+                    text = f"{category_id} ({obj_class})"
+                    cv2.putText(frame, text, (15, y_offset), 
+                               self.font, self.small_font_scale, color, 
+                               self.small_font_thickness)
+                    y_offset += 22
+            else:
+                cv2.putText(frame, "Currently Entering: None", (10, 25), 
+                           self.font, self.small_font_scale, self.colors['text'], 
+                           self.small_font_thickness)
+        else:
+            cv2.putText(frame, "Currently Entering: N/A", (10, 25), 
+                       self.font, self.small_font_scale, self.colors['text'], 
+                       self.small_font_thickness)
+        
+        # Right side: All detected objects with category IDs - IMPROVED layout
         if hasattr(sam_tracker, 'category_ids') and sam_tracker.category_ids:
-            cv2.putText(frame, "All Detected:", (frame.shape[1] - 200, 30), 
+            cv2.putText(frame, "All Detected:", (frame.shape[1] - 240, 25), 
                        self.font, self.small_font_scale, self.colors['highlight'], 
                        self.small_font_thickness)
             
-            # Group by object class
+            # Group by object class using locked class information
             class_objects = {}
             for track_id, category_id in sam_tracker.category_ids.items():
-                # Find the class for this track_id
-                obj_class = None
-                for detection in current_detections:
-                    if detection.get('track_id') == track_id:
-                        obj_class = detection.get('class', 'unknown')
-                        break
+                # Use locked class from sam_tracker.id_to_class
+                obj_class = sam_tracker.id_to_class.get(track_id, 'unknown')
                 
-                # If not found in current detections, try to infer from category_id
-                if not obj_class:
+                # If still unknown, try to infer from category_id prefix
+                if obj_class == 'unknown':
                     if category_id.startswith('P'):
                         obj_class = 'person'
                     elif category_id.startswith('B'):
@@ -280,22 +303,22 @@ class FrameOverlay:
                         obj_class = 'handbag'
                     elif category_id.startswith('S'):
                         obj_class = 'suitcase'
-                    else:
-                        obj_class = 'unknown'
                 
                 if obj_class not in class_objects:
                     class_objects[obj_class] = []
                 class_objects[obj_class].append(category_id)
             
-            y_offset = 50
-            for obj_class, category_ids in class_objects.items():
-                color = self.colors.get(obj_class, self.colors['text'])
-                ids_text = ','.join(sorted(category_ids))
-                text = f"{obj_class}: {ids_text}"
-                cv2.putText(frame, text, (frame.shape[1] - 200, y_offset), 
-                           self.font, self.small_font_scale, color, 
-                           self.small_font_thickness)
-                y_offset += 20
+            y_offset = 45
+            for obj_class in ['person', 'backpack', 'handbag', 'suitcase']:  # Consistent order
+                if obj_class in class_objects:
+                    category_ids = class_objects[obj_class]
+                    color = self.colors.get(obj_class, self.colors['text'])
+                    ids_text = ','.join(sorted(category_ids))
+                    text = f"{obj_class}: {ids_text}"
+                    cv2.putText(frame, text, (frame.shape[1] - 235, y_offset), 
+                               self.font, self.small_font_scale, color, 
+                               self.small_font_thickness)
+                    y_offset += 22
         
         return frame
     

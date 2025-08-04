@@ -54,12 +54,12 @@ class SAMLineLogic:
         self.target_classes = ["person", "backpack", "handbag", "suitcase"]
         self.class_ids = [0, 24, 26, 28]  # COCO class IDs
         
-        # Class-specific confidence thresholds - suitcase confidence lowered
+        # Class-specific confidence thresholds - MAJOR ADJUSTMENT for target counts
         self.confidence_thresholds = {
-            0: 0.85,   # person - much higher to reduce from 10 to 3
-            24: 0.60,  # backpack - much lower to enable detection (0→3)
-            26: 0.70,  # handbag - much higher to reduce from 8 to 1
-            28: 0.45   # suitcase - much lower to enable detection (was 0.65→0.45)
+            0: 0.90,   # person - raised from 0.85 to reduce from 7 to 3
+            24: 0.65,  # backpack - raised from 0.60 to reduce from 8 to 3
+            26: 0.50,  # handbag - lowered from 0.70 to enable detection (0→1)
+            28: 0.55   # suitcase - raised from 0.45 to reduce from 10 to 2
         }
         
         # Print detailed GPU information
