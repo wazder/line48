@@ -42,6 +42,10 @@ class SAMLineLogic:
         
         # Initialize YOLO for object detection with tracking
         self.yolo_model = YOLO(yolo_model)
+        # Force YOLO to use GPU
+        if torch.cuda.is_available():
+            self.yolo_model.to(device)
+            print(f"🚀 YOLO model moved to {device}")
         
         # Initialize SAM
         self._load_sam_model(sam_checkpoint)
@@ -58,7 +62,15 @@ class SAMLineLogic:
             28: 0.82   # suitcase - slightly higher to maintain 2 (currently 3)
         }
         
-        print(f"🎯 SAM + LineLogic initialized on {device}")
+        # Print detailed GPU information
+        if torch.cuda.is_available():
+            gpu_name = torch.cuda.get_device_name(0)
+            gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
+            print(f"🚀 GPU ENABLED: {gpu_name} ({gpu_memory:.1f}GB)")
+            print(f"🎯 SAM + LineLogic initialized on {device}")
+        else:
+            print(f"⚠️ GPU NOT AVAILABLE - Running on CPU")
+            print(f"🎯 SAM + LineLogic initialized on {device}")
     
     def _load_sam_model(self, checkpoint_path: Optional[str] = None):
         """Load SAM model and predictor."""
@@ -102,8 +114,8 @@ class SAMLineLogic:
         Returns:
             Tuple of (segmented_frame, detection_results)
         """
-        # YOLO detection with tracking
-        yolo_results = self.yolo_model.predict(frame, verbose=False)
+        # YOLO detection with tracking - explicitly use GPU device
+        yolo_results = self.yolo_model.predict(frame, verbose=False, device=self.device)
         
         if len(yolo_results) == 0:
             return frame, []

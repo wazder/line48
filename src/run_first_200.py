@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 from datetime import datetime
 import time
+import torch
 
 # No need for path manipulation since we're in src/
 
@@ -101,9 +102,10 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
     # Initialize frame overlay
     frame_overlay = FrameOverlay(video_info.height, video_info.width, overlay_height=150)
     
-    # Initialize SAM logic once (not per frame)
+    # Initialize SAM logic once (not per frame) - Force GPU usage
     from sam_utils import SAMLineLogic
-    sam_logic = SAMLineLogic(sam_model_type="vit_b", sam_checkpoint=sam_checkpoint)
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    sam_logic = SAMLineLogic(sam_model_type="vit_b", sam_checkpoint=sam_checkpoint, device=device)
     
     # Setup video writer
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
