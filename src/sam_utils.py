@@ -42,7 +42,6 @@ class SAMLineLogic:
         
         # Initialize YOLO for object detection with tracking
         self.yolo_model = YOLO(yolo_model)
-        print(f"✅ YOLO model loaded: {yolo_model}")
         
         # Initialize SAM
         self._load_sam_model(sam_checkpoint)
@@ -81,7 +80,6 @@ class SAMLineLogic:
             sam = sam_model_registry[self.sam_model_type](checkpoint=checkpoint_path)
             sam.to(device=self.device)
             self.sam_predictor = SamPredictor(sam)
-            print(f"✅ SAM model loaded: {self.sam_model_type}")
         except Exception as e:
             print(f"❌ Failed to load SAM model: {e}")
             raise

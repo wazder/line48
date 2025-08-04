@@ -87,6 +87,10 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
     # Initialize frame overlay
     frame_overlay = FrameOverlay(video_info.height, video_info.width, overlay_height=150)
     
+    # Initialize SAM logic once (not per frame)
+    from sam_utils import SAMLineLogic
+    sam_logic = SAMLineLogic(sam_model_type="vit_b", sam_checkpoint=sam_checkpoint)
+    
     # Setup video writer
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     video_name = os.path.splitext(os.path.basename(video_path))[0]
@@ -109,9 +113,7 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
             print(f"⚠️ End of video reached at frame {frame_count}")
             break
         
-        # Run SAM inference using SAMLineLogic
-        from sam_utils import SAMLineLogic
-        sam_logic = SAMLineLogic(sam_model_type="vit_b", sam_checkpoint=sam_checkpoint)
+        # Run SAM inference using pre-initialized SAMLineLogic
         segmented_frame, detections = sam_logic.detect_and_segment(frame)
         
         # Process line crossings - ensure detections have proper format
