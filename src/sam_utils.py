@@ -95,7 +95,7 @@ class SAMLineLogic:
             Tuple of (segmented_frame, detection_results)
         """
         # YOLO detection with tracking
-        yolo_results = self.yolo_model.detect(frame, verbose=False)
+        yolo_results = self.yolo_model.predict(frame, verbose=False)
         
         if len(yolo_results) == 0:
             return frame, []

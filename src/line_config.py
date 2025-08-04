@@ -7,18 +7,8 @@ import os
 import cv2
 import numpy as np
 
-# Line configuration defaults
-BASE_X = 960
-LINE_SPACING = 125
-LINE_HEIGHT = 1080
-
-LINE_POINTS = [
-    (BASE_X - 2*(LINE_SPACING), 0), #LeftMost line
-    (BASE_X - LINE_SPACING, 0),  # Left line
-    (BASE_X, 0),                 # Center line
-    (BASE_X + LINE_SPACING, 0),   # Right line
-    (BASE_X + (2*LINE_SPACING), 0), # RightMost line
-]
+# Import from main config to avoid duplication
+from config import BASE_X, LINE_SPACING, LINE_HEIGHT, LINE_POINTS
 
 def calculate_line_positions(base_x, line_spacing, num_lines=5):
     """Calculate X positions for all lines."""
@@ -80,10 +70,10 @@ def interactive_line_setup(video_path):
     print("• Line Spacing: Distance between consecutive lines")
     print("• Line Height: Y position where all lines will be placed")
     
-    # Default values (from config.py)
-    default_base_x = 880
-    default_line_spacing = 80
-    default_line_height = 1080
+    # Use values from main config
+    default_base_x = BASE_X
+    default_line_spacing = LINE_SPACING
+    default_line_height = LINE_HEIGHT
     
     while True:  # Loop for retry functionality
         print(f"\n📍 Default line parameters:")

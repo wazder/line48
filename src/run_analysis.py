@@ -13,7 +13,7 @@ import numpy as np
 import cv2
 from utils import load_model
 from frame_logic import FrameBasedTracker
-from video_config import select_video, list_videos, get_video_by_name
+# Removed video_config import - using video_utils instead
 # Import modular components
 from video_utils import interactive_video_selection, display_video_list
 from video_cropper import interactive_crop_selection

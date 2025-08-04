@@ -10,8 +10,7 @@ import numpy as np
 from datetime import datetime
 import time
 
-# Add src directory to path
-sys.path.append('src')
+# No need for path manipulation since we're in src/
 
 from sam_utils import download_sam_model, load_sam_model
 from sam_frame_logic import SAMSegmentTracker

@@ -38,6 +38,9 @@ python run_analysis.py \
   --confidence 0.25 \
   --iou 0.45 \
   --imgsz 1280
+
+# First 200 frames SAM analysis
+python run_first_200.py
 ```
 
 ### 3. SAM Enhanced Analysis (Optional)
@@ -158,9 +161,16 @@ line48/
 ├── src/                    # Main source code
 │   ├── run_analysis.py     # Main analysis runner
 │   ├── run_sam_analysis.py # SAM-enhanced analysis
-│   ├── config.py           # Configuration settings
-│   ├── utils.py            # Utility functions
-│   └── frame_logic.py      # Frame-based validation
+│   ├── run_first_200.py    # SAM testing (first 200 frames)
+│   ├── config.py           # Main configuration settings
+│   ├── line_config.py      # Interactive line placement
+│   ├── frame_logic.py      # Frame-based validation
+│   ├── sam_utils.py        # SAM model utilities
+│   ├── sam_frame_logic.py  # SAM segment tracking
+│   ├── video_utils.py      # Video selection utilities
+│   ├── frame_overlay.py    # Frame annotation system
+│   ├── results_exporter.py # CSV export utilities
+│   └── utils.py            # Core utility functions
 ├── analysis_tools/         # Analysis and debugging scripts
 ├── videos/                 # Input video files
 ├── outputs/                # Processed video outputs

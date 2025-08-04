@@ -8,7 +8,7 @@ torch>=2.0.0
 torchvision>=0.15.0
 
 # SAM dependencies (optional)
-# segment-anything>=1.0  # Uncomment for SAM functionality
-# matplotlib>=3.6.0      # Uncomment for SAM functionality
-# Pillow>=9.0.0          # Uncomment for SAM functionality
-# scipy>=1.9.0           # Uncomment for SAM functionality
+segment-anything>=1.0
+matplotlib>=3.6.0
+Pillow>=9.0.0
+scipy>=1.9.0
