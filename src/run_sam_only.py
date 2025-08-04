@@ -5,8 +5,8 @@ Pure SAM-based approach without YOLO dependency
 """
 
 # 🎬 FRAME RANGE CONFIGURATION
-START_FRAME = 908        # Starting frame
-END_FRAME = 1200         # Ending frame (None = until end of video)
+START_FRAME = 932        # Starting frame
+END_FRAME = 1162         # Ending frame (None = until end of video)
 
 import os
 import sys
