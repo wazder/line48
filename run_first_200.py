@@ -55,7 +55,7 @@ def run_first_200_frames(video_path, output_dir="outputs"):
     model.imgsz = 1024
     
     # Initialize tracker
-    tracker = FrameBasedTracker()
+    tracker = FrameBasedTracker(fps=video_info.fps)
     
     # Get video info
     video_info = VideoInfo.from_video_path(video_path)
