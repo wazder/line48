@@ -37,8 +37,10 @@ def test_sam_fixed():
         "--min-very-brief-time", "0.001",
         "--imgsz", "640",
         "--max-frames", "20",  # Sadece ilk 20 frame
-        "--download-sam"
+        "--verbose"
     ]
+    
+    print("Running command:", " ".join(sam_cmd))
     
     start_time = time.time()
     try:
@@ -48,7 +50,7 @@ def test_sam_fixed():
         if result.returncode == 0:
             print(f"✅ Test tamamlandı! Süre: {time_taken:.1f}s")
             print("STDOUT:")
-            print(result.stdout[-2000:])  # Son 2000 karakter
+            print(result.stdout[-3000:])  # Son 3000 karakter
         else:
             print(f"❌ Test hatası: {result.stderr}")
     except Exception as e:

@@ -14,10 +14,10 @@ LOG_CSV_PATH = ""
 # Line configuration defaults
 LINE_HEIGHT = 1080
 LINE_POINTS = [
-    sv.Point(880, 0),   # Line 1
-    sv.Point(960, 0),   # Line 2
-    sv.Point(1040, 0),  # Line 3
-    sv.Point(1120, 0)   # Line 4
+    sv.Point(400, 0),   # Line 1 - Where person 1 is moving
+    sv.Point(500, 0),   # Line 2 - Where person 1 crosses
+    sv.Point(1500, 0),  # Line 3 - Where person 2 is
+    sv.Point(1700, 0)   # Line 4 - Where person 3 and backpack are
 ]
 
 # Line IDs for identification

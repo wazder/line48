@@ -41,6 +41,7 @@ def debug_sam():
     # Process first few frames
     frame_count = 0
     max_frames = 10
+    previous_positions = {}  # Track previous positions for crossing detection
     
     while frame_count < max_frames:
         ret, frame = cap.read()
@@ -75,11 +76,22 @@ def debug_sam():
             print(f"     {i+1}. {class_name} (ID:{track_id}) - Conf: {confidence:.3f}")
             print(f"        Position: ({center_x:.1f}, {center_y:.1f})")
             
-            # Check if near any line
-            for line_idx, line_point in enumerate(LINE_POINTS):
-                distance = abs(center_x - line_point.x)
-                if distance < 100:  # Within 100 pixels
-                    print(f"        📍 Near line {line_idx+1} (distance: {distance:.1f}px)")
+            # Check line crossings
+            if track_id in previous_positions:
+                prev_x = previous_positions[track_id]
+                for line_idx, line_point in enumerate(LINE_POINTS):
+                    line_x = line_point.x
+                    
+                    # Check if crossed this line
+                    if (prev_x < line_x < center_x) or (center_x < line_x < prev_x):
+                        direction = "→" if prev_x < center_x else "←"
+                        print(f"        🎯 CROSSED Line {line_idx+1} ({direction})")
+                        print(f"           Movement: {prev_x:.1f} → {center_x:.1f} (line at {line_x})")
+                    elif abs(center_x - line_x) < 50:  # Near line
+                        print(f"        📍 Near line {line_idx+1} (distance: {abs(center_x - line_x):.1f}px)")
+            
+            # Store current position for next frame
+            previous_positions[track_id] = center_x
         
         frame_count += 1
     
