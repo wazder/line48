@@ -19,14 +19,17 @@ from line_config import LINE_POINTS, LINE_HEIGHT, BASE_X, LINE_SPACING
 import supervision as sv
 from supervision import VideoInfo
 
-def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=800):
+def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=None):
     """
-    Process first 800 frames with SAM analysis
+    Process entire video with SAM analysis
     """
-    print("🎬 SAM First 800 Frames Analysis")
+    print("🎬 SAM Full Video Analysis")
     print("=" * 50)
     print(f"📹 Video: {video_path}")
-    print(f"🎯 Max frames: {max_frames}")
+    if max_frames:
+        print(f"🎯 Max frames: {max_frames}")
+    else:
+        print(f"🎯 Processing entire video")
     
     # Check if video exists
     if not os.path.exists(video_path):
@@ -96,7 +99,10 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=800):
     # Setup video writer
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     video_name = os.path.splitext(os.path.basename(video_path))[0]
-    output_path = os.path.join(output_dir, f"{video_name}_sam_first_800_{timestamp}.mp4")
+    if max_frames:
+        output_path = os.path.join(output_dir, f"{video_name}_sam_{max_frames}frames_{timestamp}.mp4")
+    else:
+        output_path = os.path.join(output_dir, f"{video_name}_sam_full_{timestamp}.mp4")
     
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_path, fourcc, video_info.fps, (video_info.width, video_info.height + 150))
@@ -107,9 +113,12 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=800):
     start_time = time.time()
     processed_frames = 0
     
-    print(f"\n🔄 Processing frames 0-{max_frames-1} with SAM...")
+    if max_frames:
+        print(f"\n🔄 Processing frames 0-{max_frames-1} with SAM...")
+    else:
+        print(f"\n🔄 Processing entire video with SAM...")
     
-    while frame_count < max_frames:
+    while max_frames is None or frame_count < max_frames:
         ret, frame = cap.read()
         if not ret:
             print(f"⚠️ End of video reached at frame {frame_count}")
@@ -154,10 +163,10 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=800):
             line_crossings=crossings,
             detections=detections,
             current_frame=frame_count,
-            total_frames=max_frames,
+            total_frames=max_frames if max_frames else "Unknown",
             fps=video_info.fps,
             processing_time=None,
-            timestamp=f"Frame {frame_count}/{max_frames}",
+            timestamp=f"Frame {frame_count}/{max_frames if max_frames else 'Total'}",
             sam_tracker=sam_tracker
         )
         
@@ -168,7 +177,10 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=800):
         if frame_count % 100 == 0:
             elapsed = time.time() - start_time
             fps_processing = processed_frames / elapsed if elapsed > 0 else 0
-            print(f"🟢 Processed frame {frame_count}/{max_frames} | Speed: {fps_processing:.1f} FPS")
+            if max_frames:
+                print(f"🟢 Processed frame {frame_count}/{max_frames} | Speed: {fps_processing:.1f} FPS")
+            else:
+                print(f"🟢 Processed frame {frame_count} | Speed: {fps_processing:.1f} FPS")
         
         frame_count += 1
         processed_frames += 1
@@ -192,17 +204,17 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=800):
 
 if __name__ == "__main__":
     # Use default video path
-    video_path = "../videos/short_video.mp4"
+    video_path = "../videos/new_video.mp4"
     
     if not os.path.exists(video_path):
         print(f"❌ Video not found: {video_path}")
         sys.exit(1)
     
-    # Run SAM analysis for first 800 frames
-    output_path = run_sam_first_200_frames(video_path)
+    # Run SAM analysis for entire video
+    output_path = run_sam_full_video_analysis(video_path)
     
     if output_path:
-        print(f"\n🎉 SAM first 800 frames analysis completed successfully!")
+        print(f"\n🎉 SAM full video analysis completed successfully!")
         print(f"📺 Output saved to: {output_path}")
     else:
         print("❌ Processing failed") 
