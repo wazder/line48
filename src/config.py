@@ -15,12 +15,19 @@ LOG_CSV_PATH = ""
 BASE_X = 960
 LINE_SPACING = 125
 LINE_HEIGHT = 1080
+
+# Line margins (top and bottom spacing)
+LINE_TOP_MARGIN = 150      # 150px from top
+LINE_BOTTOM_MARGIN = 150   # 150px from bottom
+LINE_START_Y = LINE_TOP_MARGIN
+LINE_END_Y = LINE_HEIGHT - LINE_BOTTOM_MARGIN
+
 LINE_POINTS = [
-    sv.Point(BASE_X - 2*(LINE_SPACING), 0), #LeftMost line
-    sv.Point(BASE_X - LINE_SPACING, 0),  # Left line
-    sv.Point(BASE_X, 0),                 # Center line
-    sv.Point(BASE_X + LINE_SPACING, 0),   # Right line
-    sv.Point(BASE_X + (2*LINE_SPACING), 0), # RightMost line
+    sv.Point(BASE_X - 2*(LINE_SPACING), LINE_START_Y), #LeftMost line
+    sv.Point(BASE_X - LINE_SPACING, LINE_START_Y),     # Left line
+    sv.Point(BASE_X, LINE_START_Y),                    # Center line
+    sv.Point(BASE_X + LINE_SPACING, LINE_START_Y),     # Right line
+    sv.Point(BASE_X + (2*LINE_SPACING), LINE_START_Y), # RightMost line
 ]
 
 # Line IDs for identification

@@ -21,7 +21,7 @@ import torch
 from sam_utils import download_sam_model, load_sam_model
 from sam_frame_logic import SAMSegmentTracker
 from frame_overlay import FrameOverlay
-from line_config import LINE_POINTS, LINE_HEIGHT, BASE_X, LINE_SPACING
+from line_config import LINE_POINTS, LINE_HEIGHT, BASE_X, LINE_SPACING, LINE_END_Y
 import supervision as sv
 from supervision import VideoInfo
 
@@ -56,7 +56,7 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
     line_names = ["LeftMost", "Left", "Center", "Right", "RightMost"]
     for i, point in enumerate(LINE_POINTS):
         x, y = point.x, point.y
-        print(f"   {line_names[i]}: ({x}, {y}) -> ({x}, {LINE_HEIGHT})")
+        print(f"   {line_names[i]}: ({x}, {y}) -> ({x}, {LINE_END_Y})")
     
     # Load SAM model
     print("\n🤖 Loading SAM model...")
@@ -79,10 +79,10 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
     LINES = []
     for i, point in enumerate(LINE_POINTS):
         start_point = sv.Point(point.x, point.y)
-        end_point = sv.Point(point.x, LINE_HEIGHT)
+        end_point = sv.Point(point.x, LINE_END_Y)
         line_zone = sv.LineZone(start=start_point, end=end_point)
         LINES.append(line_zone)
-        print(f"   Line {i+1} ({LINE_IDS[i]}): ({point.x}, {point.y}) -> ({point.x}, {LINE_HEIGHT})")
+        print(f"   Line {i+1} ({LINE_IDS[i]}): ({point.x}, {point.y}) -> ({point.x}, {LINE_END_Y})")
     
     # Extract x-positions for SAM tracker
     LINE_X_POSITIONS = [point.x for point in LINE_POINTS]
@@ -163,9 +163,28 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
         else:
             crossings = []
         
-        # Annotate frame - detections is a list, not sv.Detections object
-        # Skip annotation for now since detections is in list format
-        frame = segmented_frame
+        # Update frame with correct category IDs after processing
+        frame = segmented_frame.copy()
+        
+        # Redraw bounding boxes with correct category IDs
+        if valid_detections:
+            for det in valid_detections:
+                if det.get('mask') is not None:
+                    bbox = det.get('bbox', [])
+                    if len(bbox) == 4:
+                        x1, y1, x2, y2 = [int(coord) for coord in bbox]
+                        
+                        # Draw bounding box
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        
+                        # Add label with correct category ID
+                        category_id = det.get('category_id', det.get('track_id', 'N/A'))
+                        obj_class = det.get('class', 'unknown')
+                        confidence = det.get('confidence', 0.0)
+                        
+                        label = f"{obj_class} {category_id} ({confidence:.2f})"
+                        cv2.putText(frame, label, (x1, y1-10), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
         # Annotate lines
         for line, line_annotator in zip(LINES, line_annotators):

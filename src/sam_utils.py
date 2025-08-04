@@ -205,10 +205,9 @@ class SAMLineLogic:
                     x1, y1, x2, y2 = [int(coord) for coord in bbox]
                     cv2.rectangle(segmented_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     
-                    # Add label with track ID  
+                    # Add label with track ID (category ID will be added later in run_first_200.py)
                     track_id = detection.get('track_id', 'N/A')
-                    category_id = detection.get('category_id', track_id)  # Use category ID if available
-                    label = f"{detection['class']} ID:{category_id} ({detection['confidence']:.2f})"
+                    label = f"{detection['class']} Track:{track_id} ({detection['confidence']:.2f})"
                     cv2.putText(segmented_frame, label, (x1, y1-10), 
                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 
