@@ -140,9 +140,9 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
         segmented_frame, detections = sam_logic.detect_and_segment(frame, frame_count)
         
         # Process line crossings - ensure detections have proper format
+        valid_detections = []
         if detections:
             # Filter detections that have masks and add category IDs
-            valid_detections = []
             for det in detections:
                 if det.get('mask') is not None:
                     # Add category-specific ID using locked class if available
@@ -160,9 +160,8 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
                         det['category_id'] = category_id
                         det['class'] = obj_class  # Use locked class for further processing
                     valid_detections.append(det)
-            crossings = sam_tracker.update(frame_count, valid_detections)
-        else:
-            crossings = []
+            
+        crossings = sam_tracker.update(frame_count, valid_detections)
         
         # Update frame with correct category IDs after processing
         frame = segmented_frame.copy()
