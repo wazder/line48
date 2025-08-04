@@ -283,9 +283,22 @@ def create_callback_with_frame_logic(model_single, video_info, use_frame_logic=F
             tracker = FrameBasedTracker(
                 fps=video_info.fps,
                 min_safe_time=0.5,
-                min_mixed_time=0.28,
-                min_detection_time=0.18
+                min_uncertain_time=0.28,
+                min_very_brief_time=0.167
             )
+            
+            # Setup lines and annotators
+            from config import LINE_POINTS, LINE_HEIGHT, LINE_IDS
+            LINES = [sv.LineZone(start=p, end=sv.Point(p.x, LINE_HEIGHT)) for p in LINE_POINTS]
+            line_annotators = [
+                sv.LineZoneAnnotator(
+                    display_in_count=False,
+                    display_out_count=False,
+                    text_thickness=2,
+                    text_scale=1.0
+                )
+                for _ in LINE_IDS
+            ]
             
             COCO_NAMES = model_single.model.names 
             SELECTED_CLASSES = ["person", "backpack", "handbag", "suitcase"]
@@ -314,7 +327,7 @@ def create_callback_with_frame_logic(model_single, video_info, use_frame_logic=F
                 tracker.update_object_presence(detections, index, COCO_NAMES)
                 
                 # Process line crossings with frame-based logic
-                tracker.process_line_crossing(detections, index, LINES, LINE_IDS, COCO_NAMES)
+                crossings = tracker.process_line_crossing(detections, index, LINES, LINE_IDS, COCO_NAMES)
                 
                 # Visual annotations with confidence colors
                 for i in range(len(detections)):

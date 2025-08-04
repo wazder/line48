@@ -194,15 +194,26 @@ def run_analysis(source_video_path, use_frame_logic=True, line_config=None, **kw
             frame = frame_overlay.draw_line_indicators(frame, crossings)
             
             # Create overlay with information
+            detections_info = []
+            for i in range(len(detections)):
+                if i < len(detections.class_id):
+                    class_id = detections.class_id[i]
+                    class_name = COCO_NAMES.get(class_id, 'unknown')
+                    confidence = detections.confidence[i] if i < len(detections.confidence) else 0.0
+                    track_id = detections.tracker_id[i] if i < len(detections.tracker_id) else None
+                    bbox = detections.xyxy[i] if i < len(detections.xyxy) else [0, 0, 0, 0]
+                    
+                    detections_info.append({
+                        'class': class_name,
+                        'confidence': confidence,
+                        'track_id': track_id,
+                        'bbox': bbox
+                    })
+            
             overlay_frame = frame_overlay.create_complete_overlay(
                 original_frame=frame,
                 line_crossings=crossings,
-                detections=[{
-                    'class': COCO_NAMES.get(det.class_id, 'unknown'),
-                    'confidence': det.confidence,
-                    'track_id': det.tracker_id,
-                    'bbox': det.xyxy[0] if len(det.xyxy) > 0 else [0, 0, 0, 0]
-                } for det in detections],
+                detections=detections_info,
                 current_frame=index,
                 total_frames=video_info.total_frames,
                 fps=video_info.fps,
