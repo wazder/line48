@@ -59,15 +59,15 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
     video_info = VideoInfo.from_video_path(video_path)
     print(f"📊 Video info: {video_info.width}x{video_info.height}, {video_info.fps} FPS")
     
-    # Initialize SAM segment tracker
-    sam_tracker = SAMSegmentTracker(lines=LINES, fps=video_info.fps)
-    
     # Convert line positions to sv.Point objects
     LINE_POINTS_SV = [sv.Point(x, y) for x, y in LINE_POINTS]
     LINE_IDS = ["LeftMost", "Left", "Center", "Right", "RightMost"]
     
     # Create line zones
     LINES = [sv.LineZone(start=p, end=sv.Point(p.x, LINE_HEIGHT)) for p in LINE_POINTS_SV]
+    
+    # Initialize SAM segment tracker
+    sam_tracker = SAMSegmentTracker(lines=LINES, fps=video_info.fps)
     line_annotators = [
         sv.LineZoneAnnotator(
             display_in_count=False,
