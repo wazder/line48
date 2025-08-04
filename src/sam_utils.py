@@ -250,6 +250,26 @@ class SAMLineLogic:
         intersection = np.logical_and(mask, line_mask)
         return np.any(intersection)
 
+def load_sam_model(checkpoint_path: str):
+    """
+    Load SAM model from checkpoint.
+    
+    Args:
+        checkpoint_path: Path to SAM checkpoint file
+        
+    Returns:
+        SAM predictor object
+    """
+    try:
+        sam = sam_model_registry["vit_b"](checkpoint=checkpoint_path)
+        sam.to(device="cuda" if torch.cuda.is_available() else "cpu")
+        predictor = SamPredictor(sam)
+        print(f"✅ SAM model loaded from: {checkpoint_path}")
+        return predictor
+    except Exception as e:
+        print(f"❌ Failed to load SAM model: {e}")
+        raise
+
 def download_sam_model(model_type: str = "vit_b") -> str:
     """
     Download SAM model checkpoint.
