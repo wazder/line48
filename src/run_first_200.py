@@ -3,6 +3,11 @@
 Run SAM analysis for full video
 """
 
+# 🎬 QUICK FRAME CONFIGURATION - Change this value to process different amounts of frames
+# Set to None for entire video, or any number for specific frame count
+FRAME_LIMIT = 1000  # Examples: None (full video), 800, 1000, 2000, etc.
+# APTAL OLMA BURDAN DEGISTIR !!!!!!!!! >*<
+
 import os
 import sys
 import cv2
@@ -28,6 +33,7 @@ def run_sam_full_video_analysis(video_path, output_dir="outputs", max_frames=Non
     print(f"📹 Video: {video_path}")
     if max_frames is not None:
         print(f"🎯 Max frames: {max_frames}")
+        print(f"🎯 Estimated duration: {max_frames/29:.1f} seconds at 29 FPS")
     else:
         print(f"🎯 Processing entire video")
     
@@ -213,8 +219,8 @@ if __name__ == "__main__":
         print(f"❌ Video not found: {video_path}")
         sys.exit(1)
     
-    # Run SAM analysis for entire video
-    output_path = run_sam_full_video_analysis(video_path, max_frames=None)
+    # Run SAM analysis with configured frame limit
+    output_path = run_sam_full_video_analysis(video_path, max_frames=FRAME_LIMIT)
     
     if output_path:
         print(f"\n🎉 SAM full video analysis completed successfully!")

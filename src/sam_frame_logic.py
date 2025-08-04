@@ -86,6 +86,9 @@ class SAMSegmentTracker:
             'handbag': 0,
             'suitcase': 0
         }
+        self.id_to_class = {}  # Maps track_id to original class - LOCKED once set
+        self.assigned_category_ids = set()  # Track which category IDs are already used
+        self.track_crossing_history = {}  # Track crossing history: {track_id: ['IN', 'OUT', 'IN', ...]}
         
         # Statistics
         self.stats = {
@@ -152,8 +155,19 @@ class SAMSegmentTracker:
         return current_crossings
     
     def _get_category_id(self, global_track_id: int, obj_class: str) -> str:
-        """Get or create category-specific ID for tracking."""
+        """Get or create category-specific ID for tracking - LOCKED once assigned."""
+        
+        # If this track_id already has a locked class, use that class instead
+        if global_track_id in self.id_to_class:
+            locked_class = self.id_to_class[global_track_id]
+            if locked_class != obj_class:
+                print(f"🔒 Track {global_track_id} locked to {locked_class}, ignoring {obj_class} classification")
+                obj_class = locked_class  # Use locked class
+        
         if global_track_id not in self.category_ids:
+            # Lock this track_id to this class PERMANENTLY
+            self.id_to_class[global_track_id] = obj_class
+            
             # Create new category-specific ID
             self.category_counters[obj_class] += 1
             category_prefix = {
@@ -164,7 +178,16 @@ class SAMSegmentTracker:
             }
             prefix = category_prefix.get(obj_class, 'X')
             category_id = f"{prefix}{self.category_counters[obj_class]}"
+            
+            # Ensure this category_id is unique
+            while category_id in self.assigned_category_ids:
+                self.category_counters[obj_class] += 1
+                category_id = f"{prefix}{self.category_counters[obj_class]}"
+            
             self.category_ids[global_track_id] = category_id
+            self.assigned_category_ids.add(category_id)
+            
+            print(f"🆔 NEW & LOCKED: Track {global_track_id} ({obj_class}) → {category_id}")
         
         return self.category_ids[global_track_id]
     
@@ -272,7 +295,35 @@ class SAMSegmentTracker:
                 return None
         
         if line_crossed:
-            direction = "IN" if prev_x < curr_x else "OUT"
+            # Determine physical direction first
+            physical_direction = "IN" if prev_x < curr_x else "OUT"
+            
+            # Apply IN/OUT logic: First crossing must be IN, OUT only after previous IN
+            if track_id not in self.track_crossing_history:
+                self.track_crossing_history[track_id] = []
+            
+            # Check crossing history for this track
+            crossing_history = self.track_crossing_history[track_id]
+            
+            if len(crossing_history) == 0:
+                # First crossing for this track - MUST be IN
+                direction = "IN"
+                if physical_direction == "OUT":
+                    print(f"🔄 Track {track_id} ({obj_class}): First crossing forced to IN (was {physical_direction})")
+            else:
+                # Not first crossing - use physical direction but validate logic
+                direction = physical_direction
+                last_direction = crossing_history[-1] if crossing_history else None
+                
+                # Validate: Can't have consecutive same directions
+                if direction == last_direction:
+                    print(f"🚫 Track {track_id} ({obj_class}): Consecutive {direction} blocked (last was {last_direction})")
+                    return None
+                
+                # Special case: If trying OUT without any previous IN, force to IN
+                if direction == "OUT" and "IN" not in crossing_history:
+                    direction = "IN"
+                    print(f"🔄 Track {track_id} ({obj_class}): OUT without previous IN, forced to IN")
             
             # Check if this crossing has already been detected (stricter duplicate prevention)
             crossing_key = (track_id, line_id, direction)
@@ -368,6 +419,9 @@ class SAMSegmentTracker:
                 'crossing_type': crossing_type
             }
             
+            # Add to track crossing history BEFORE any other checks
+            self.track_crossing_history[track_id].append(direction)
+            
             # Mark this crossing as detected
             self.detected_crossings.add(crossing_key)
             
@@ -392,7 +446,8 @@ class SAMSegmentTracker:
             
             # Print valid crossing only when it's actually counted
             closest_distance = min(abs(prev_x - line_x), abs(curr_x - line_x))
-            print(f"✅ COUNTED [Frame {frame_idx}]: {obj_class} crossed line {line_id} at {closest_distance}px distance")
+            history_summary = "->".join(self.track_crossing_history[track_id])
+            print(f"✅ COUNTED [Frame {frame_idx}]: {obj_class} Track {track_id} crossed line {line_id} → {direction} (History: {history_summary})")
             
             return crossing_info
         
