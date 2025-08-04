@@ -14,7 +14,7 @@ import time
 sys.path.append('src')
 
 from sam_utils import download_sam_model, load_sam_model
-from sam_frame_logic import SAMFrameLogic
+from sam_frame_logic import SAMSegmentTracker
 from frame_overlay import FrameOverlay
 from line_config import LINE_POINTS, LINE_HEIGHT, BASE_X, LINE_SPACING
 import supervision as sv
@@ -59,8 +59,8 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
     video_info = VideoInfo.from_video_path(video_path)
     print(f"📊 Video info: {video_info.width}x{video_info.height}, {video_info.fps} FPS")
     
-    # Initialize SAM frame logic
-    sam_logic = SAMFrameLogic(sam_predictor, fps=video_info.fps)
+    # Initialize SAM segment tracker
+    sam_tracker = SAMSegmentTracker(lines=LINES, fps=video_info.fps)
     
     # Convert line positions to sv.Point objects
     LINE_POINTS_SV = [sv.Point(x, y) for x, y in LINE_POINTS]
@@ -103,11 +103,13 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
             print(f"⚠️ End of video reached at frame {frame_count}")
             break
         
-        # Run SAM inference
+        # Run SAM inference using SAMLineLogic
+        from sam_utils import SAMLineLogic
+        sam_logic = SAMLineLogic(sam_model_type="vit_b", sam_checkpoint=sam_checkpoint)
         segmented_frame, detections = sam_logic.detect_and_segment(frame)
         
         # Process line crossings
-        crossings = sam_logic.update(frame_count, detections)
+        crossings = sam_tracker.update(frame_count, detections)
         
         # Annotate frame
         frame = sv.BoxAnnotator().annotate(segmented_frame, detections)
@@ -149,7 +151,7 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
     out.release()
     
     # Get results
-    results_summary = sam_logic.get_results_summary()
+    crossing_summary = sam_tracker.get_crossing_summary()
     
     print(f"\n✅ Processing complete!")
     print(f"📁 Output video: {output_path}")
@@ -157,15 +159,7 @@ def run_sam_first_200_frames(video_path, output_dir="outputs", max_frames=200):
     
     # Print results
     print("\n📈 Detection Results:")
-    for class_name, counts in results_summary.items():
-        print(f"   {class_name}: {counts}")
-    
-    # Print line crossing results
-    print("\n🎯 Line Crossing Results:")
-    for line_id in LINE_IDS:
-        in_count = sam_logic.get_line_in_count(line_id)
-        out_count = sam_logic.get_line_out_count(line_id)
-        print(f"   {line_id}: IN={in_count}, OUT={out_count}")
+    print(crossing_summary)
     
     return output_path
 
